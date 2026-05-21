@@ -548,9 +548,3 @@ If you encounter any issues:
 5. Clear browser cache and reload
 
 ---
-
-**Version**: 2.0.0  
-**Last Updated**: April 2026  
-**Design System**: Cottagecore Minimalistic Glassmorphism  
-**Font**: Montserrat Sans-Serif  
-**Color Palette**: White, Blue, Grey, Green, Red
