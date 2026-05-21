@@ -262,7 +262,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             Ready to Transform Your Health?
           </h2>
           <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)', maxWidth: '600px', margin: '0 auto 40px' }}>
-            Join thousands of users already experiencing better healthcare through our platform.
+            Join the family to have a better healthcare experience through our platform.
           </p>
 
           {/* Get Started Free → Register */}
