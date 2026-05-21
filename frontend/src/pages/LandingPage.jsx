@@ -146,7 +146,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             margin: '0 auto 48px', lineHeight: 1.6, fontWeight: 400
           }}>
             Connect with healthcare professionals, track your health, and get AI-powered 
-            insights—all in one secure platform.
+            insights all in one secure platform.
           </p>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
