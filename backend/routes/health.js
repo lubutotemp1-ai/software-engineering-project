@@ -80,14 +80,14 @@ router.get('/patient/:patientId/medications', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const rows = await db.all_('SELECT * FROM health_records WHERE patient_id = ? ORDER BY record_date DESC', [req.user.id]);
+    const rows = await db.all_('SELECT * FROM health_records WHERE patient_id = ? OR user_id = ? ORDER BY record_date DESC', [req.user.id, req.user.id]);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });
 
 router.get('/latest', async (req, res) => {
   try {
-    const row = await db.get_('SELECT * FROM health_records WHERE patient_id = ? ORDER BY record_date DESC LIMIT 1', [req.user.id]);
+    const row = await db.get_('SELECT * FROM health_records WHERE patient_id = ? OR user_id = ? ORDER BY record_date DESC LIMIT 1', [req.user.id, req.user.id]);
     res.json(row || null);
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });
@@ -104,8 +104,8 @@ router.post('/', async (req, res) => {
   if (!record_date) return res.status(400).json({ error: 'Record date is required.' });
   try {
     const result = await db.run_(
-      `INSERT INTO health_records (patient_id, record_date, weight, height, blood_pressure, heart_rate, blood_sugar, temperature, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.user.id, record_date, weight || null, height || null, blood_pressure || null, heart_rate || null, blood_sugar || null, temperature || null, notes || null]
+      `INSERT INTO health_records (patient_id, user_id, record_date, weight, height, blood_pressure, heart_rate, blood_sugar, temperature, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.user.id, req.user.id, record_date, weight || null, height || null, blood_pressure || null, heart_rate || null, blood_sugar || null, temperature || null, notes || null]
     );
     const record = await db.get_('SELECT * FROM health_records WHERE id = ?', [result.lastInsertRowid]);
     res.status(201).json({ message: 'Health record saved!', record });

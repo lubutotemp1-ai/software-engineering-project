@@ -14,7 +14,7 @@ router.post('/ask', async (req, res) => {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp",
       contents: `You are a friendly health education assistant for a hospital portal.
 Answer the following health question in simple, easy-to-understand language.
 Keep the answer clear, accurate, and helpful. If it is a serious medical concern,
@@ -23,7 +23,7 @@ remind the user to consult a doctor.
 Question: ${question}`,
     });
 
-    res.json({ answer: response.text });
+    res.json({ answer: response.response.text() });
 
   } catch (err) {
     console.error('Gemini error:', err.message);

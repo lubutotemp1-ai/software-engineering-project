@@ -39,11 +39,11 @@ Self-Care Tips: Provide appropriate general advice for managing symptoms at home
 Disclaimer: Remind the patient that this is NOT a substitute for professional medical advice and they should consult a qualified healthcare provider for a proper diagnosis and treatment.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp",
       contents: prompt,
     });
 
-    const diagnosisText = response.text;
+    const diagnosisText = response.response.text();
 
     // Save to database
     const result = await db.run_(
