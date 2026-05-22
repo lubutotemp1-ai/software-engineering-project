@@ -653,7 +653,7 @@ export default function DoctorDashboard({ onLogout, user }) {
                     </div>
 
                     {/* Input */}
-                    <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 10, alignItems: 'flex-end', background: 'white' }}>
+                    <div style={{ padding: '10px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 10, alignItems: 'flex-end', background: 'white' }}>
                       <textarea rows={1} placeholder={`Message ${selectedChat.other_user_name}...`}
                         value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={handleChatKey}
                         style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1.5px solid #e0e0e0', outline: 'none', fontFamily: 'inherit' }} />

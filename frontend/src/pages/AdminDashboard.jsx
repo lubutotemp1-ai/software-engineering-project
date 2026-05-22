@@ -453,7 +453,7 @@ export default function AdminDashboard({ user, onLogout }) {
                       })}
                       <div ref={messagesEndRef} />
                     </div>
-                    <div style={{ padding: '10px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: 'white' }}>
+                    <div style={{ padding: '10px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: 'white' }}>
                       <textarea rows={1} placeholder={`Message ${selectedChat.other_user_name}...`}
                         value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={handleChatKey}
                         style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1.5px solid #E5E7EB', outline: 'none', fontFamily: 'inherit' }} />

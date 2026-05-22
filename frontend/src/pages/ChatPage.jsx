@@ -426,7 +426,7 @@ export default function ChatPage() {
               </div>
 
               {/* Input */}
-              <div className="chat-input-row" style={{ padding: '10px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: '#ffffff' }}>
+              <div className="chat-input-row" style={{ padding: '10px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: '#ffffff' }}>
                 <textarea
                   className="chat-input"
                   rows={1}
