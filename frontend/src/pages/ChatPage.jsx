@@ -174,15 +174,28 @@ export default function ChatPage() {
     if (!input.trim() || !selected || sending) return;
     setSending(true);
     try {
-      await axios.post('/api/chat/send', {
+      const res = await axios.post('/api/chat/send', {
         receiverId: selected.other_user_id,
         receiverRole: selected.other_user_role,
         message: input.trim(),
       });
       setInput('');
+      // Optimistically add the message to the UI
+      const newMessage = {
+        id: res.data?.messageId || Date.now(),
+        sender_id: user.id,
+        sender_role: user.role,
+        receiver_id: selected.other_user_id,
+        receiver_role: selected.other_user_role,
+        message: input.trim(),
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, newMessage]);
       fetchMessages(selected.other_user_id, selected.other_user_role);
       fetchConversations();
     } catch (err) {
+      console.error('Error sending message:', err);
       alert(err.response?.data?.error || 'Failed to send message.');
     } finally { setSending(false); }
   };
@@ -258,7 +271,7 @@ export default function ChatPage() {
         </button>
       </div>
 
-      <div className="chat-layout">
+      <div className="chat-layout" style={{ overflow: 'visible', height: 'auto', minHeight: 'calc(100vh - 120px)' }}>
         {/* ── Sidebar ── */}
         <div className="chat-sidebar">
           <div className="chat-sidebar-header">
@@ -327,7 +340,7 @@ export default function ChatPage() {
         </div>
 
         {/* ── Chat Main ── */}
-        <div className="chat-main">
+        <div className="chat-main" style={{ overflow: 'visible', height: '100%', display: 'flex', flexDirection: 'column' }}>
           {!selected ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, background: '#F9FAFB' }}>
               <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
@@ -363,7 +376,7 @@ export default function ChatPage() {
               </div>
 
               {/* Messages */}
-              <div className="chat-messages" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 4, background: '#F9FAFB' }}>
+              <div className="chat-messages" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 4, background: '#F9FAFB', flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 {messages.length === 0 && (
                   <div style={{ textAlign: 'center', color: '#000000', fontSize: 13, padding: 20 }}>
                     No messages yet. Say hello! 👋
@@ -426,7 +439,7 @@ export default function ChatPage() {
               </div>
 
               {/* Input */}
-              <div className="chat-input-row" style={{ padding: '10px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: '#ffffff' }}>
+              <div className="chat-input-row" style={{ padding: '12px 28px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 12, alignItems: 'flex-end', background: '#ffffff', overflow: 'visible' }}>
                 <textarea
                   className="chat-input"
                   rows={1}
@@ -440,14 +453,14 @@ export default function ChatPage() {
                   onClick={sendMessage}
                   disabled={!input.trim() || sending}
                   style={{
-                    width: 40, height: 40, borderRadius: '50%', border: 'none',
+                    width: 36, height: 36, borderRadius: '50%', border: 'none',
                     background: input.trim() ? '#2563EB' : '#E5E7EB',
                     color: input.trim() ? '#ffffff' : '#4B5563',
-                    fontSize: 16, cursor: input.trim() ? 'pointer' : 'default',
+                    fontSize: 14, cursor: input.trim() ? 'pointer' : 'default',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0, transition: 'all 0.2s',
                   }}>
-                  {sending ? '…' : <Send size={18} strokeWidth={2} />}
+                  {sending ? '…' : <Send size={16} strokeWidth={2} />}
                 </button>
               </div>
             </>
