@@ -265,7 +265,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             Join the family to have a better healthcare experience through our platform.
           </p>
 
-          {/* Get Started Free → Register */}
+          {/* Register */}
           <button onClick={onGetStarted} style={{
             background: 'white', color: '#667eea', border: 'none',
             padding: '20px 50px', borderRadius: '50px', fontSize: '18px', fontWeight: 700,
@@ -278,7 +278,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             Get Started Free <ArrowRight size={22} />
           </button>
 
-          {/* Already have an account → Login */}
+          {/* Login */}
           <div style={{ marginTop: '20px' }}>
             <button onClick={onSignIn} style={{
               background: 'none', border: 'none', color: 'rgba(255,255,255,0.75)',
