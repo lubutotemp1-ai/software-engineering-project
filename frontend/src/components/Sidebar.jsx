@@ -112,7 +112,8 @@ export default function Sidebar({ activePage, setActivePage }) {
         <nav className="sidebar-nav">
           {navItems.map(item => (
             <button key={item.id} className={`nav-item ${activePage === item.id ? 'active' : ''}`}
-              onClick={() => setActivePage(item.id)}>
+              onClick={() => setActivePage(item.id)}
+              title={item.label}>
               <span className="nav-icon">
                 <item.icon size={16} strokeWidth={1.5} />
               </span>

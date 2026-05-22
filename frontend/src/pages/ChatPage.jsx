@@ -174,25 +174,14 @@ export default function ChatPage() {
     if (!input.trim() || !selected || sending) return;
     setSending(true);
     try {
-      const res = await axios.post('/api/chat/send', {
+      await axios.post('/api/chat/send', {
         receiverId: selected.other_user_id,
         receiverRole: selected.other_user_role,
         message: input.trim(),
       });
       setInput('');
-      // Optimistically add the message to the UI
-      const newMessage = {
-        id: res.data?.messageId || Date.now(),
-        sender_id: user.id,
-        sender_role: user.role,
-        receiver_id: selected.other_user_id,
-        receiver_role: selected.other_user_role,
-        message: input.trim(),
-        is_read: false,
-        created_at: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, newMessage]);
-      fetchMessages(selected.other_user_id, selected.other_user_role);
+      // Fetch messages after sending to get the saved message from server
+      await fetchMessages(selected.other_user_id, selected.other_user_role);
       fetchConversations();
     } catch (err) {
       console.error('Error sending message:', err);
@@ -340,7 +329,7 @@ export default function ChatPage() {
         </div>
 
         {/* ── Chat Main ── */}
-        <div className="chat-main" style={{ overflow: 'visible', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="chat-main" style={{ overflow: 'visible' }}>
           {!selected ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, background: '#F9FAFB' }}>
               <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>

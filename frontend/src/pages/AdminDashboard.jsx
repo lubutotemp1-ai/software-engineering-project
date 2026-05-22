@@ -48,6 +48,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [stats, setStats] = useState({ totalPatients: 0, totalDoctors: 0, totalAppointments: 0, pendingAppointments: 0 });
   const [showAddDoctor, setShowAddDoctor] = useState(false);
   const [editDoctor, setEditDoctor] = useState(null);
   const [showPw, setShowPw] = useState(false);
@@ -78,7 +79,7 @@ export default function AdminDashboard({ user, onLogout }) {
 
   const fetchAll = async () => {
     try {
-      await Promise.all([fetchDoctors(), fetchPatients(), fetchAppointments(), fetchConversations(), fetchAvailableUsers(), fetchUnread()]);
+      await Promise.all([fetchDoctors(), fetchPatients(), fetchAppointments(), fetchConversations(), fetchAvailableUsers(), fetchUnread(), fetchStats()]);
     } finally { setLoading(false); }
   };
 
@@ -88,6 +89,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const fetchConversations = async () => { try { const r = await axios.get('/api/chat/conversations'); setConversations(r.data || []); } catch {} };
   const fetchAvailableUsers = async () => { try { const r = await axios.get('/api/chat/users'); setAvailableUsers(r.data || []); } catch {} };
   const fetchUnread = async () => { try { const r = await axios.get('/api/chat/unread-count'); setUnreadCount(r.data.count); } catch {} };
+  const fetchStats = async () => { try { const r = await axios.get('/api/admin/stats'); setStats(r.data); } catch {} };
   const fetchChatMessages = async (otherId, otherRole) => { const r = await axios.get(`/api/chat/messages/${otherId}?otherRole=${otherRole || ''}`); setChatMessages(r.data || []); fetchConversations(); fetchUnread(); };
 
   const showMsg = (msg, isErr = false) => {
@@ -256,9 +258,9 @@ export default function AdminDashboard({ user, onLogout }) {
             </div>
             <div className="stats-grid">
               {[
-                { icon: '🩺', label: 'Doctors', value: doctors.length, bg: 'var(--green-bg)', c: 'var(--green)' },
-                { icon: '👤', label: 'Patients', value: patients.length, bg: 'var(--blue-bg)', c: 'var(--blue)' },
-                { icon: '📅', label: 'Appointments', value: appointments.length, bg: 'var(--grey-100)', c: 'var(--grey-600)' },
+                { icon: '🩺', label: 'Doctors', value: stats.totalDoctors || doctors.length, bg: 'var(--green-bg)', c: 'var(--green)' },
+                { icon: '👤', label: 'Patients', value: stats.totalPatients || patients.length, bg: 'var(--blue-bg)', c: 'var(--blue)' },
+                { icon: '📅', label: 'Appointments', value: stats.totalAppointments || appointments.length, bg: 'var(--grey-100)', c: 'var(--grey-600)' },
                 { icon: '💬', label: 'Unread Messages', value: unreadCount, bg: unreadCount > 0 ? 'var(--amber-bg)' : 'var(--grey-100)', c: unreadCount > 0 ? 'var(--amber)' : 'var(--grey-600)' },
               ].map((s, i) => (
                 <div className="stat-card" key={i}>
