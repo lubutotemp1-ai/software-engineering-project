@@ -38,8 +38,10 @@ router.post('/check', async (req, res) => {
       return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to the backend .env file.' });
     }
 
+    console.log('Initializing GoogleGenAI for diagnosis...');
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    console.log('GoogleGenAI initialized successfully');
 
     const prompt = `You are a medical AI assistant in a hospital portal helping patients with preliminary health assessments.
 A patient has described their symptoms. Provide a clear, empathetic, plain-text response (no markdown, no bullet symbols, just clean paragraphs).
@@ -62,10 +64,12 @@ Self-Care Tips: Provide appropriate general advice for managing symptoms at home
 
 Disclaimer: Remind the patient that this is NOT a substitute for professional medical advice and they should consult a qualified healthcare provider for a proper diagnosis and treatment.`;
 
+    console.log('Sending symptoms to Gemini model...');
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.0-flash",
       contents: prompt,
     });
+    console.log('Received response from Gemini model');
 
     const diagnosisText = getModelText(response);
 
@@ -98,7 +102,14 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
     });
 
   } catch (err) {
-    console.error('AI Diagnosis error:', err.message);
+    console.error('Gemini diagnosis error:');
+    console.error('Error message:', err.message);
+    console.error('Error stack:', err.stack);
+    console.error('Full error object:', JSON.stringify(err, null, 2));
+    if (err.response) {
+      console.error('Response status:', err.response.status);
+      console.error('Response data:', err.response.data);
+    }
     res.status(500).json({ error: err.message || 'Failed to get AI diagnosis.' });
   }
 });

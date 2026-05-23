@@ -23,11 +23,14 @@ router.post('/ask', async (req, res) => {
       return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to the backend .env file.' });
     }
 
+    console.log('Initializing GoogleGenAI...');
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    console.log('GoogleGenAI initialized successfully');
 
+    console.log('Sending question to Gemini model...');
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.0-flash",
       contents: `You are a friendly health education assistant for a hospital portal.
 Answer the following health question in simple, easy-to-understand language.
 Keep the answer clear, accurate, and helpful. If it is a serious medical concern,
@@ -35,12 +38,20 @@ remind the user to consult a doctor.
 
 Question: ${question}`,
     });
+    console.log('Received response from Gemini model');
 
     const answerText = getModelText(response);
     res.json({ answer: answerText });
 
   } catch (err) {
-    console.error('Gemini error:', err.response?.data || err.message);
+    console.error('Gemini education error:');
+    console.error('Error message:', err.message);
+    console.error('Error stack:', err.stack);
+    console.error('Full error object:', JSON.stringify(err, null, 2));
+    if (err.response) {
+      console.error('Response status:', err.response.status);
+      console.error('Response data:', err.response.data);
+    }
     const errMessage = err.response?.data?.error || err.message || 'Failed to get AI response.';
     if (errMessage.toLowerCase().includes('api key')) {
       return res.status(500).json({ error: 'Invalid GEMINI_API_KEY. Please check your backend .env file.' });
