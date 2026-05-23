@@ -35,6 +35,10 @@ function isOriginAllowed(origin) {
 
 const corsOptions = {
   origin(origin, callback) {
+    // Allow all origins in development or if explicitly allowed
+    if (process.env.NODE_ENV === 'development' || !origin) {
+      return callback(null, true);
+    }
     if (isOriginAllowed(origin)) return callback(null, true);
     console.warn('CORS blocked origin:', origin);
     return callback(null, false);
@@ -81,7 +85,13 @@ async function startServer() {
     console.log('✅ Database ready');
     app.listen(PORT, () => console.log(`🏥 Health Easy Portal Server on http://localhost:${PORT}`));
   } catch (err) {
-    console.error('❌ Failed to start server:', err);
+    console.error('❌ Failed to start server:', err.message);
+    if (err.message.includes('ENOTFOUND') || err.message.includes('getaddrinfo')) {
+      console.error('❌ Database connection failed. Please check your DATABASE_URL in .env');
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('❌ GEMINI_API_KEY is not set. AI features will not work.');
+    }
     process.exit(1);
   }
 }
