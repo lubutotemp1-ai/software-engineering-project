@@ -158,24 +158,3 @@ router.get('/stats', async (req, res) => {
 });
 
 module.exports = router;
-
-// GET all patients
-router.get('/patients', async (req, res) => {
-  try {
-    const patients = await db.all_('SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE role = "patient" ORDER BY name ASC');
-    res.json(patients);
-  } catch (err) { res.status(500).json({ error: 'Server error.' }); }
-});
-
-// GET all appointments
-router.get('/appointments', async (req, res) => {
-  try {
-    const appts = await db.all_(`
-      SELECT a.*, u.name as patient_name, u.email as patient_email
-      FROM appointments a
-      JOIN users u ON a.patient_id = u.id
-      ORDER BY a.appointment_date DESC
-    `);
-    res.json(appts);
-  } catch (err) { res.status(500).json({ error: 'Server error.' }); }
-});

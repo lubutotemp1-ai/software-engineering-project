@@ -378,7 +378,9 @@ export default function DoctorDashboard({ onLogout, user }) {
           {navItems.map(item => (
             <button key={item.id}
               className={`nav-item ${activePage === item.id || (activePage === 'patientRecords' && item.id === 'appointments') ? 'active' : ''}`}
-              onClick={() => setActivePage(item.id)}>
+              onClick={() => setActivePage(item.id)}
+              title={item.label}
+              aria-label={item.label}>
               <span className="nav-icon">{item.icon}</span>{item.label}
               {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
             </button>

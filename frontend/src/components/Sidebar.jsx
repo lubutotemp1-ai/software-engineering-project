@@ -113,11 +113,12 @@ export default function Sidebar({ activePage, setActivePage }) {
           {navItems.map(item => (
             <button key={item.id} className={`nav-item ${activePage === item.id ? 'active' : ''}`}
               onClick={() => setActivePage(item.id)}
-              title={item.label}>
+              title={item.label}
+              aria-label={item.label}>
               <span className="nav-icon">
                 <item.icon size={16} strokeWidth={1.5} />
               </span>
-              {item.label}
+              <span className="nav-label" style={{ fontSize: '13px', fontWeight: 500 }}>{item.label}</span>
               {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
             </button>
           ))}

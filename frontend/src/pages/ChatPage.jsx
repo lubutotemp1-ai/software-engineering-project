@@ -173,19 +173,36 @@ export default function ChatPage() {
     e.preventDefault();
     if (!input.trim() || !selected || sending) return;
     setSending(true);
+    const messageToSend = input.trim();
+    setInput('');
     try {
-      await axios.post('/api/chat/send', {
+      const res = await axios.post('/api/chat/send', {
         receiverId: selected.other_user_id,
         receiverRole: selected.other_user_role,
-        message: input.trim(),
+        message: messageToSend,
       });
-      setInput('');
-      // Fetch messages after sending to get the saved message from server
-      await fetchMessages(selected.other_user_id, selected.other_user_role);
-      fetchConversations();
+      console.log('Message sent successfully, response:', res.data);
+      // Optimistically add message to UI immediately
+      const newMessage = res.data?.chatMessage || {
+        id: Date.now(),
+        sender_id: user.id,
+        sender_role: user.role,
+        receiver_id: selected.other_user_id,
+        receiver_role: selected.other_user_role,
+        message: messageToSend,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, newMessage]);
+      // Then fetch from server to sync
+      setTimeout(async () => {
+        await fetchMessages(selected.other_user_id, selected.other_user_role);
+        fetchConversations();
+      }, 500);
     } catch (err) {
       console.error('Error sending message:', err);
       alert(err.response?.data?.error || 'Failed to send message.');
+      setInput(messageToSend); // Restore input on error
     } finally { setSending(false); }
   };
 

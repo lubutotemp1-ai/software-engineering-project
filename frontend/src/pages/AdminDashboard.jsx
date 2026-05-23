@@ -89,7 +89,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const fetchConversations = async () => { try { const r = await axios.get('/api/chat/conversations'); setConversations(r.data || []); } catch {} };
   const fetchAvailableUsers = async () => { try { const r = await axios.get('/api/chat/users'); setAvailableUsers(r.data || []); } catch {} };
   const fetchUnread = async () => { try { const r = await axios.get('/api/chat/unread-count'); setUnreadCount(r.data.count); } catch {} };
-  const fetchStats = async () => { try { const r = await axios.get('/api/admin/stats'); setStats(r.data); } catch {} };
+  const fetchStats = async () => { try { const r = await axios.get('/api/admin/stats'); setStats(r.data); console.log('Stats fetched:', r.data); } catch (err) { console.error('Error fetching stats:', err); } };
   const fetchChatMessages = async (otherId, otherRole) => { const r = await axios.get(`/api/chat/messages/${otherId}?otherRole=${otherRole || ''}`); setChatMessages(r.data || []); fetchConversations(); fetchUnread(); };
 
   const showMsg = (msg, isErr = false) => {
@@ -224,7 +224,7 @@ export default function AdminDashboard({ user, onLogout }) {
         </div>
         <nav className="sidebar-nav">
           {navItems.map(item => (
-            <button key={item.id} className={`nav-item ${activePage === item.id ? 'active' : ''}`} onClick={() => setActivePage(item.id)}>
+            <button key={item.id} className={`nav-item ${activePage === item.id ? 'active' : ''}`} onClick={() => setActivePage(item.id)} title={item.label} aria-label={item.label}>
               <span className="nav-icon">{item.icon}</span>{item.label}
               {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
             </button>
