@@ -61,6 +61,10 @@ router.post('/checkout', async (req, res) => {
   }
 
   try {
+    if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+      return res.status(500).json({ error: 'FRONTEND_URL is required in production to create Stripe checkout URLs.' });
+    }
+
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     const frontend = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
     const tier = PLANS[plan];
@@ -87,8 +91,8 @@ router.post('/checkout', async (req, res) => {
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error('Stripe checkout error:', err.message);
-    res.status(500).json({ error: 'Could not start checkout.' });
+    console.error('Stripe checkout error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Could not start checkout.' });
   }
 });
 

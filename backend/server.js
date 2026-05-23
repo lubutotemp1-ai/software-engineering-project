@@ -78,6 +78,9 @@ async function startServer() {
     await initDb();
     await ensureRuntimeSchema();
     console.log('✅ Database ready');
+    if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+      console.warn('⚠️ FRONTEND_URL is not set in production. Stripe checkout may fail when creating redirect URLs.');
+    }
     app.listen(PORT, () => console.log(`🏥 Health Easy Portal Server on http://localhost:${PORT}`));
   } catch (err) {
     console.error('❌ Failed to start server:', err.message);
@@ -86,6 +89,9 @@ async function startServer() {
     }
     if (!process.env.GEMINI_API_KEY) {
       console.error('❌ GEMINI_API_KEY is not set. AI features will not work.');
+    }
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY is not set. AI checkout will not work.');
     }
     process.exit(1);
   }
