@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const authMiddleware = require('../middleware/auth');
-const { consumeAiUse } = require('../utils/aiUsage');
+const { consumeAiUse, getUsageStatus } = require('../utils/aiUsage');
 
 function getModelText(response) {
   if (!response) return '';
@@ -25,7 +25,7 @@ router.post('/check', async (req, res) => {
     }
 
     if (req.user.role === 'patient') {
-      const usage = await consumeAiUse(req.user.id);
+      const usage = await getUsageStatus(req.user.id);
       if (!usage.allowed) {
         return res.status(402).json({
           error: `Monthly AI limit reached (${usage.used}/${usage.limit}). Upgrade your plan for more uses.`,
@@ -86,6 +86,10 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
         'SELECT * FROM ai_diagnoses WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1',
         [req.user.id]
       );
+    }
+
+    if (req.user.role === 'patient') {
+      await consumeAiUse(req.user.id);
     }
 
     res.json({

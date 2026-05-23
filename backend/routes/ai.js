@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const db = require('../db/database');
 const { PLANS, getUsageStatus, setUserPlan } = require('../utils/aiUsage');
 
 router.use(authMiddleware);
@@ -104,7 +105,6 @@ router.post('/billing-portal', async (req, res) => {
     return res.status(503).json({ error: 'Payments are not configured yet.' });
   }
   try {
-    const db = require('../db/database');
     const row = await db.get_(
       'SELECT stripe_customer_id FROM user_ai_subscriptions WHERE user_id = ?',
       [req.user.id]
@@ -124,6 +124,25 @@ router.post('/billing-portal', async (req, res) => {
   } catch (err) {
     console.error('Billing portal error:', err.message);
     res.status(500).json({ error: 'Could not open billing portal.' });
+  }
+});
+
+router.post('/reset-usage', async (req, res) => {
+  try {
+    if (req.user.role === 'admin') {
+      await db.run_('UPDATE user_ai_subscriptions SET uses_this_month = 0, updated_at = NOW()');
+      return res.json({ reset: true, message: 'Reset usage for all users.' });
+    }
+
+    if (req.user.role !== 'patient') {
+      return res.status(403).json({ error: 'Only patients and admins can reset AI usage.' });
+    }
+
+    await db.run_('UPDATE user_ai_subscriptions SET uses_this_month = 0, updated_at = NOW() WHERE user_id = ?', [req.user.id]);
+    res.json({ reset: true, message: 'Reset usage for current user.' });
+  } catch (err) {
+    console.error('Reset AI usage error:', err.message);
+    res.status(500).json({ error: 'Failed to reset AI usage.' });
   }
 });
 
