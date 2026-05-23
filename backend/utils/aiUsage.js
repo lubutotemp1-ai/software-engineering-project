@@ -30,13 +30,15 @@ async function resetPeriodIfNeeded(row) {
 }
 
 async function getOrCreateSubscription(userId) {
-  let row = await db.get_('SELECT * FROM user_ai_subscriptions WHERE user_id = ?', [userId]);
+  const uid = parseInt(userId, 10);
+  if (Number.isNaN(uid)) throw new Error('Invalid user id for subscription.');
+  let row = await db.get_('SELECT * FROM user_ai_subscriptions WHERE user_id = ?', [uid]);
   if (!row) {
     await db.run_(
       `INSERT INTO user_ai_subscriptions (user_id, plan, uses_this_month, period_start) VALUES (?, 'free', 0, CURRENT_DATE)`,
-      [userId]
+      [uid]
     );
-    row = await db.get_('SELECT * FROM user_ai_subscriptions WHERE user_id = ?', [userId]);
+    row = await db.get_('SELECT * FROM user_ai_subscriptions WHERE user_id = ?', [uid]);
   }
   return resetPeriodIfNeeded(row);
 }
@@ -76,7 +78,9 @@ async function consumeAiUse(userId) {
 
 async function setUserPlan(userId, plan, stripeIds = {}) {
   if (!PLANS[plan]) throw new Error('Invalid plan');
-  await getOrCreateSubscription(userId);
+  const uid = parseInt(userId, 10);
+  if (Number.isNaN(uid)) throw new Error('Invalid user id.');
+  await getOrCreateSubscription(uid);
   await db.run_(
     `UPDATE user_ai_subscriptions
      SET plan = ?, uses_this_month = 0, period_start = CURRENT_DATE,
@@ -84,9 +88,9 @@ async function setUserPlan(userId, plan, stripeIds = {}) {
          stripe_subscription_id = COALESCE(?, stripe_subscription_id),
          updated_at = NOW()
      WHERE user_id = ?`,
-    [plan, stripeIds.customerId || null, stripeIds.subscriptionId || null, userId]
+    [plan, stripeIds.customerId || null, stripeIds.subscriptionId || null, uid]
   );
-  return getUsageStatus(userId);
+  return getUsageStatus(uid);
 }
 
 module.exports = { PLANS, getUsageStatus, consumeAiUse, setUserPlan, getLimit };

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { CreditCard, Sparkles, ExternalLink, RefreshCw, Zap } from 'lucide-react';
 import AiPlansSection from './AiPlansSection';
 import { AI_PLANS, PAID_PLAN_IDS } from '../constants/aiPlans';
+import { startAiCheckout, checkoutErrorMessage } from '../utils/aiCheckout';
 
 export default function SubscriptionManager() {
   const [usage, setUsage] = useState(null);
@@ -14,8 +15,12 @@ export default function SubscriptionManager() {
     try {
       const res = await axios.get('/api/ai/usage');
       setUsage(res.data);
-    } catch {
-      setMessage({ type: 'error', text: 'Could not load subscription details.' });
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.error
+          || (err.response ? 'Could not load subscription details.' : 'Cannot reach the API. Check REACT_APP_API_URL on Netlify.'),
+      });
     } finally {
       setLoading(false);
     }
@@ -34,11 +39,20 @@ export default function SubscriptionManager() {
 
   const startCheckout = async (plan) => {
     setActionLoading(`checkout-${plan}`);
+    setMessage({ type: '', text: '' });
     try {
-      const res = await axios.post('/api/ai/checkout', { plan });
-      if (res.data?.url) window.location.href = res.data.url;
+      const result = await startAiCheckout(plan);
+      if (result.manualUpgrade) {
+        setUsage(result.manualUpgrade);
+        setMessage({
+          type: 'success',
+          text: `Upgraded to ${result.manualUpgrade.planName || plan}! (test mode — no Stripe charge)`,
+        });
+      } else if (!result.redirected && result.error) {
+        setMessage({ type: 'error', text: result.error });
+      }
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Could not start checkout.' });
+      setMessage({ type: 'error', text: checkoutErrorMessage(err) });
     } finally {
       setActionLoading(null);
     }
@@ -174,6 +188,11 @@ export default function SubscriptionManager() {
             ? 'Select a different tier below. For payment method changes, use Manage payment & billing above.'
             : 'You are on the free plan. Subscribe for more monthly AI uses on diagnosis and education.'}
         </p>
+        {usage?.stripeEnabled === false && !usage?.manualUpgradeEnabled && (
+          <div className="alert alert-warning" style={{ marginBottom: 16 }}>
+            Card payments are not configured on the server yet. The site owner must add <strong>STRIPE_SECRET_KEY</strong> on Render.
+          </div>
+        )}
         <AiPlansSection
           variant="default"
           usage={usage}

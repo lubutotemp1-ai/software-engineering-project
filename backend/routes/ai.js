@@ -5,16 +5,35 @@ const { PLANS, getUsageStatus, setUserPlan } = require('../utils/aiUsage');
 
 router.use(authMiddleware);
 
+router.get('/config', (req, res) => {
+  res.json({
+    stripeEnabled: Boolean(process.env.STRIPE_SECRET_KEY),
+    manualUpgradeEnabled: process.env.ALLOW_MANUAL_AI_UPGRADE === 'true',
+  });
+});
+
 router.get('/usage', async (req, res) => {
   try {
     if (req.user.role !== 'patient') {
-      return res.json({ plan: 'unlimited', used: 0, limit: 9999, remaining: 9999, canUse: true, plans: PLANS });
+      return res.json({
+        plan: 'unlimited',
+        planName: 'Unlimited',
+        used: 0,
+        limit: 9999,
+        remaining: 9999,
+        canUse: true,
+        plans: PLANS,
+      });
     }
     const status = await getUsageStatus(req.user.id);
-    res.json(status);
+    res.json({
+      ...status,
+      stripeEnabled: Boolean(process.env.STRIPE_SECRET_KEY),
+      manualUpgradeEnabled: process.env.ALLOW_MANUAL_AI_UPGRADE === 'true',
+    });
   } catch (err) {
-    console.error('AI usage error:', err.message);
-    res.status(500).json({ error: 'Failed to load AI usage.' });
+    console.error('AI usage error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Failed to load AI usage.' });
   }
 });
 
@@ -27,7 +46,18 @@ router.post('/checkout', async (req, res) => {
     return res.status(400).json({ error: 'Invalid plan. Choose pro, plus, or max.' });
   }
   if (!process.env.STRIPE_SECRET_KEY) {
-    return res.status(503).json({ error: 'Payments are not configured yet. Contact support.' });
+    if (process.env.ALLOW_MANUAL_AI_UPGRADE === 'true') {
+      try {
+        const status = await setUserPlan(req.user.id, plan);
+        return res.json({ manualUpgrade: true, ...status });
+      } catch (err) {
+        return res.status(500).json({ error: err.message || 'Upgrade failed.' });
+      }
+    }
+    return res.status(503).json({
+      error: 'Online payments are not configured. Set STRIPE_SECRET_KEY on the server, or ALLOW_MANUAL_AI_UPGRADE=true for testing.',
+      code: 'STRIPE_NOT_CONFIGURED',
+    });
   }
 
   try {

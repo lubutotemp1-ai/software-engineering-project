@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Sparkles, Zap, AlertCircle } from 'lucide-react';
 import AiPlansSection from './AiPlansSection';
 import { PAID_PLAN_IDS } from '../constants/aiPlans';
+import { startAiCheckout, checkoutErrorMessage } from '../utils/aiCheckout';
 
 /**
  * Usage banner + plans for AI Diagnosis & Education pages.
@@ -35,10 +36,16 @@ export default function AiUsagePanel({ onUsageChange, refreshRef, defaultShowPla
 
   const startCheckout = async (plan) => {
     try {
-      const res = await axios.post('/api/ai/checkout', { plan });
-      if (res.data?.url) window.location.href = res.data.url;
+      const result = await startAiCheckout(plan);
+      if (result.manualUpgrade) {
+        setUsage(result.manualUpgrade);
+        onUsageChange?.(result.manualUpgrade);
+        alert(`Upgraded to ${result.manualUpgrade.planName || plan}!`);
+      } else if (!result.redirected && result.error) {
+        alert(result.error);
+      }
     } catch (err) {
-      alert(err.response?.data?.error || 'Could not start checkout.');
+      alert(checkoutErrorMessage(err));
     }
   };
 

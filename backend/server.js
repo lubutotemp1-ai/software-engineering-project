@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { initDb } = require('./db/database');
+const { ensureRuntimeSchema } = require('./db/ensureSchema');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -26,7 +28,6 @@ function isOriginAllowed(origin) {
   if (!origin) return true;
   const normalized = origin.replace(/\/$/, '');
   if (allowedOrigins.includes(normalized)) return true;
-  // Netlify production + deploy previews
   if (/^https:\/\/([a-z0-9-]+--)?medi-point\.netlify\.app$/i.test(normalized)) return true;
   if (/^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.netlify\.app$/i.test(normalized)) return true;
   return false;
@@ -65,11 +66,24 @@ app.use('/api/ai',           aiRouter);
 app.use('/api/diagnosis',    require('./routes/diagnosis'));
 app.use('/api/schedules',    require('./routes/schedules'));
 
-app.get('/', (req, res) => res.json({ message: '✅ Health Easy Portal API running', version: '3.0.0' }));
+app.get('/', (req, res) => res.json({ message: '✅ Health Easy Portal API running', version: '3.0.1' }));
 app.use((req, res) => res.status(404).json({ error: 'Route not found.' }));
 app.use((err, req, res, next) => {
   console.error(err.stack || err.message);
   res.status(500).json({ error: 'Something went wrong.' });
 });
 
-app.listen(PORT, () => console.log(`🏥 Health Easy Portal Server on http://localhost:${PORT}`));
+async function startServer() {
+  try {
+    console.log('⏳ Initializing database...');
+    await initDb();
+    await ensureRuntimeSchema();
+    console.log('✅ Database ready');
+    app.listen(PORT, () => console.log(`🏥 Health Easy Portal Server on http://localhost:${PORT}`));
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+startServer();

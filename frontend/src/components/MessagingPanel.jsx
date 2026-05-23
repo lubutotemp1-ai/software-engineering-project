@@ -123,11 +123,7 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
   const fetchMessages = async (otherUserId, otherRole, silent = false) => {
     try {
       const res = await axios.get(`/api/chat/messages/${otherUserId}?otherRole=${otherRole || ''}`);
-      const data = res.data || [];
-      setMessages((prev) => {
-        if (data.length === 0 && prev.length > 0) return prev;
-        return data;
-      });
+      setMessages(res.data || []);
       if (!silent) fetchConversations();
     } catch (err) {
       console.error('Error fetching messages:', err.response?.data?.error || err.message);
@@ -142,7 +138,7 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
 
   const startNewChat = (targetUser) => {
     const existing = conversations.find(
-      (c) => c.other_user_id === targetUser.id && c.other_user_role === targetUser.role
+      (c) => Number(c.other_user_id) === Number(targetUser.id) && c.other_user_role === targetUser.role
     );
     if (existing) selectConversation(existing);
     else {
@@ -163,6 +159,10 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim() || !selected || sending || !user) return;
+    if (!selected.other_user_role) {
+      alert('Cannot send: recipient role is missing. Start the chat again from New Message.');
+      return;
+    }
     setSending(true);
     const messageToSend = input.trim();
     setInput('');

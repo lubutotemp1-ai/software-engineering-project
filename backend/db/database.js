@@ -262,11 +262,6 @@ const initDb = async () => {
   );
 };
 
-initDb().catch((err) => {
-  console.error('❌ Database initialization failed:', err);
-  process.exit(1);
-});
-
 process.on('SIGINT', async () => {
   await pool.end();
   console.log('Database connection closed.');
@@ -274,3 +269,5 @@ process.on('SIGINT', async () => {
 });
 
 module.exports = db;
+module.exports.initDb = initDb;
+module.exports.pool = pool;
