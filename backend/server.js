@@ -45,6 +45,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+const aiRouter = require('./routes/ai');
+app.post('/api/ai/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  aiRouter.handleStripeWebhook(req, res);
+});
+
 app.use(express.json());
 
 app.use('/api/auth',         require('./routes/auth'));
@@ -55,6 +61,7 @@ app.use('/api/admin',        require('./routes/admin'));
 app.use('/api/doctor',       require('./routes/doctor'));
 app.use('/api/doctors',      require('./routes/doctors'));
 app.use('/api/chat',         require('./routes/chat'));
+app.use('/api/ai',           aiRouter);
 app.use('/api/diagnosis',    require('./routes/diagnosis'));
 app.use('/api/schedules',    require('./routes/schedules'));
 

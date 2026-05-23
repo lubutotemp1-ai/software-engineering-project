@@ -1,0 +1,125 @@
+const express = require('express');
+const router = express.Router();
+const authMiddleware = require('../middleware/auth');
+const { PLANS, getUsageStatus, setUserPlan } = require('../utils/aiUsage');
+
+router.use(authMiddleware);
+
+router.get('/usage', async (req, res) => {
+  try {
+    if (req.user.role !== 'patient') {
+      return res.json({ plan: 'unlimited', used: 0, limit: 9999, remaining: 9999, canUse: true, plans: PLANS });
+    }
+    const status = await getUsageStatus(req.user.id);
+    res.json(status);
+  } catch (err) {
+    console.error('AI usage error:', err.message);
+    res.status(500).json({ error: 'Failed to load AI usage.' });
+  }
+});
+
+router.post('/checkout', async (req, res) => {
+  const { plan } = req.body;
+  if (req.user.role !== 'patient') {
+    return res.status(403).json({ error: 'Only patients can purchase AI plans.' });
+  }
+  if (!['pro', 'plus', 'max'].includes(plan)) {
+    return res.status(400).json({ error: 'Invalid plan. Choose pro, plus, or max.' });
+  }
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Payments are not configured yet. Contact support.' });
+  }
+
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const frontend = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const tier = PLANS[plan];
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `Health Easy AI — ${tier.name}`,
+            description: `${tier.limit} AI uses per month`,
+          },
+          unit_amount: tier.priceMonthly * 100,
+          recurring: { interval: 'month' },
+        },
+        quantity: 1,
+      }],
+      metadata: { userId: String(req.user.id), plan },
+      success_url: `${frontend}/?ai_subscription=success&plan=${plan}`,
+      cancel_url: `${frontend}/?ai_subscription=cancelled`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Stripe checkout error:', err.message);
+    res.status(500).json({ error: 'Could not start checkout.' });
+  }
+});
+
+router.post('/confirm-dev-plan', async (req, res) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_AI_UPGRADE !== 'true') {
+    return res.status(403).json({ error: 'Not available in production.' });
+  }
+  const { plan } = req.body;
+  if (!['free', 'pro', 'plus', 'max'].includes(plan)) {
+    return res.status(400).json({ error: 'Invalid plan.' });
+  }
+  try {
+    const status = await setUserPlan(req.user.id, plan);
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.handleStripeWebhook = async (req, res) => {
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return res.status(503).send('Stripe not configured');
+  }
+
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Webhook signature failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const userId = parseInt(session.metadata?.userId, 10);
+      const plan = session.metadata?.plan;
+      if (userId && plan && PLANS[plan]) {
+        await setUserPlan(userId, plan, {
+          customerId: session.customer,
+          subscriptionId: session.subscription,
+        });
+      }
+    }
+    if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      const userRow = await require('../db/database').get_(
+        'SELECT user_id FROM user_ai_subscriptions WHERE stripe_subscription_id = ?',
+        [sub.id]
+      );
+      if (userRow) await setUserPlan(userRow.user_id, 'free');
+    }
+  } catch (err) {
+    console.error('Webhook handler error:', err.message);
+    return res.status(500).send('Handler failed');
+  }
+
+  res.json({ received: true });
+};
+
+module.exports = router;

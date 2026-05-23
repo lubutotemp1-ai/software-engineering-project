@@ -66,7 +66,7 @@ router.get('/conversations', async (req, res) => {
           const d = await db.get_('SELECT name FROM doctors WHERE id = ?', [conv.other_user_id]);
           if (d) name = d.name;
         } else if (conv.other_user_role === 'admin') {
-          const a = await db.get_('SELECT name FROM admins WHERE id = ?', [conv.other_user_id]);
+          const a = await db.get_("SELECT name FROM users WHERE id = ? AND role = 'admin'", [conv.other_user_id]);
           if (a) name = a.name;
         }
       } catch (_) {}
@@ -98,7 +98,7 @@ router.get('/users', async (req, res) => {
     } else if (userRole === 'doctor') {
       // Doctors can communicate with patients, admins, AND other doctors
       const patients = await db.all_("SELECT id, name, email FROM users WHERE role = 'patient' ORDER BY name");
-      const admins   = await db.all_('SELECT id, name FROM admins ORDER BY name');
+      const admins   = await db.all_("SELECT id, name FROM users WHERE role = 'admin' ORDER BY name");
       const doctors  = await db.all_('SELECT id, name, department, specialization FROM doctors WHERE id != ? ORDER BY name', [userId]);
       users = [
         ...patients.map(function(p) { return { id: p.id, name: p.name, role: 'patient', email: p.email }; }),
@@ -129,19 +129,16 @@ router.get('/messages/:otherUserId', async (req, res) => {
     const date     = req.query.date;
     const otherRole = req.query.otherRole;
 
-    // Determine the other user role if not provided
     let actualOtherRole = otherRole;
     if (!actualOtherRole) {
-      const patientCheck = await db.get_('SELECT 1 FROM users WHERE id = ?', [otherId]);
-      if (patientCheck) {
-        actualOtherRole = 'patient';
-      } else {
+      const adminCheck = await db.get_("SELECT 1 FROM users WHERE id = ? AND role = 'admin'", [otherId]);
+      if (adminCheck) actualOtherRole = 'admin';
+      else {
         const doctorCheck = await db.get_('SELECT 1 FROM doctors WHERE id = ?', [otherId]);
-        if (doctorCheck) {
-          actualOtherRole = 'doctor';
-        } else {
-          const adminCheck = await db.get_('SELECT 1 FROM admins WHERE id = ?', [otherId]);
-          actualOtherRole = adminCheck ? 'admin' : 'unknown';
+        if (doctorCheck) actualOtherRole = 'doctor';
+        else {
+          const patientCheck = await db.get_("SELECT 1 FROM users WHERE id = ? AND role = 'patient'", [otherId]);
+          actualOtherRole = patientCheck ? 'patient' : 'unknown';
         }
       }
     }
@@ -272,12 +269,15 @@ router.delete('/conversation/:otherUserId', async (req, res) => {
     // Determine other role if not provided
     let actualOtherRole = otherRole;
     if (!actualOtherRole) {
-      const p = await db.get_('SELECT 1 FROM users WHERE id = ?', [otherId]);
-      if (p) { actualOtherRole = 'patient'; }
+      const adminCheck = await db.get_("SELECT 1 FROM users WHERE id = ? AND role = 'admin'", [otherId]);
+      if (adminCheck) actualOtherRole = 'admin';
       else {
         const d = await db.get_('SELECT 1 FROM doctors WHERE id = ?', [otherId]);
-        if (d) { actualOtherRole = 'doctor'; }
-        else { actualOtherRole = 'admin'; }
+        if (d) actualOtherRole = 'doctor';
+        else {
+          const p = await db.get_("SELECT 1 FROM users WHERE id = ? AND role = 'patient'", [otherId]);
+          actualOtherRole = p ? 'patient' : 'unknown';
+        }
       }
     }
 

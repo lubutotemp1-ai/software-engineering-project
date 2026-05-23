@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import AiUsagePanel from '../components/AiUsagePanel';
 
 const SEVERITY = [
   { value: 'mild',      label: 'Mild',      color: '#27ae60', bg: '#eafaf1', desc: 'Minor discomfort, can continue daily activities' },
@@ -131,6 +132,7 @@ export default function DiagnosisPage() {
   const [sendSuccess, setSendSuccess]   = useState('');
   const [activeTab, setActiveTab]       = useState('new');
   const [expandedHistory, setExpandedHistory] = useState(null);
+  const usageRefreshRef = useRef(null);
 
   useEffect(() => {
     fetchHistory();
@@ -155,8 +157,14 @@ export default function DiagnosisPage() {
       const diag = res.data.diagnosis || res.data;
       setDiagnosis(diag);
       fetchHistory();
+      usageRefreshRef.current?.();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to get AI diagnosis.');
+      if (err.response?.status === 402) {
+        alert(err.response?.data?.error || 'AI monthly limit reached. Upgrade your plan to continue.');
+        usageRefreshRef.current?.();
+      } else {
+        alert(err.response?.data?.error || 'Failed to get AI diagnosis.');
+      }
     } finally { setLoading(false); }
   };
 
@@ -192,6 +200,8 @@ export default function DiagnosisPage() {
         <h1>🤖 AI Health Diagnosis</h1>
         <p>Get a preliminary symptom assessment powered by Gemini AI</p>
       </div>
+
+      <AiUsagePanel refreshRef={usageRefreshRef} />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid #e8e8e8' }}>

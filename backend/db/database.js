@@ -155,9 +155,26 @@ const initDb = async () => {
       receiver_role TEXT,
       message TEXT NOT NULL,
       is_read BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (sender_id) REFERENCES users(id),
-      FOREIGN KEY (receiver_id) REFERENCES doctors(id)
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await runQuery(`
+    ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_sender_id_fkey
+  `).catch(() => {});
+  await runQuery(`
+    ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_receiver_id_fkey
+  `).catch(() => {});
+
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS user_ai_subscriptions (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      plan TEXT NOT NULL DEFAULT 'free',
+      uses_this_month INTEGER NOT NULL DEFAULT 0,
+      period_start DATE NOT NULL DEFAULT CURRENT_DATE,
+      stripe_customer_id TEXT,
+      stripe_subscription_id TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
 

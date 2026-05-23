@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useSidebarOpen } from '../hooks/useSidebarOpen';
 import SidebarToggle from '../components/SidebarToggle';
 import FlashBanner from '../components/FlashBanner';
+import MessagingPanel from '../components/MessagingPanel';
 import { useFlashMessage } from '../utils/flashMessage';
 
 // ── Shared helpers ────────────────────────────────────────────────
@@ -108,36 +109,14 @@ export default function DoctorDashboard({ onLogout, user }) {
   const [blockedDates, setBlockedDates]     = useState([]);
   const [blockReason, setBlockReason]       = useState('');
 
-  // Chat state
-  const [conversations, setConversations]   = useState([]);
-  const [selectedChat, setSelectedChat]     = useState(null);
-  const [chatMessages, setChatMessages]     = useState([]);
-  const [chatInput, setChatInput]           = useState('');
-  const [chatSending, setChatSending]       = useState(false);
-  const [availableUsers, setAvailableUsers] = useState([]);
-  const [showNewChat, setShowNewChat]       = useState(false);
-  const [userSearch, setUserSearch]         = useState('');
-  const [chatSearch, setChatSearch]         = useState('');
-  const [unreadCount, setUnreadCount]       = useState(0);
-  const [deletingConvo, setDeletingConvo]   = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [chatTarget, setChatTarget] = useState(null);
+  const [diagnoses, setDiagnoses] = useState([]);
 
-  const [diagnoses, setDiagnoses]           = useState([]);
-  const messagesEndRef = useRef(null);
-  const pollingRef     = useRef(null);
-
-  useEffect(() => { fetchAll(); return () => { if (pollingRef.current) clearInterval(pollingRef.current); }; }, []);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
-  useEffect(() => {
-    if (pollingRef.current) clearInterval(pollingRef.current);
-    if (selectedChat) {
-      pollingRef.current = setInterval(() => fetchChatMessages(selectedChat.other_user_id, selectedChat.other_user_role), 5000);
-    }
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [selectedChat]);
-
+  useEffect(() => { fetchAll(); }, []);
   const fetchAll = async () => {
     try {
-      await Promise.all([fetchAppointments(), fetchSchedules(), fetchConversations(), fetchAvailableUsers(), fetchUnread(), fetchDiagnoses()]);
+      await Promise.all([fetchAppointments(), fetchSchedules(), fetchUnread(), fetchDiagnoses()]);
     } finally { setLoading(false); }
   };
 
@@ -145,70 +124,6 @@ export default function DoctorDashboard({ onLogout, user }) {
   const fetchSchedules     = async () => { const r = await axios.get('/api/schedules/my-schedules'); setBlockedDates(r.data.filter(s => s.is_available === 0)); };
   const fetchUnread        = async () => { try { const r = await axios.get('/api/chat/unread-count'); setUnreadCount(r.data.count); } catch {} };
   const fetchDiagnoses     = async () => { try { const r = await axios.get('/api/diagnosis/received'); setDiagnoses(r.data || []); } catch {} };
-
-  const fetchConversations = async () => {
-    try {
-      const r = await axios.get('/api/chat/conversations');
-      const seen = new Set();
-      const unique = (r.data || []).filter(c => {
-        const key = `${c.other_user_role}:${c.other_user_id}`;
-        if (seen.has(key)) return false;
-        seen.add(key); return true;
-      });
-      setConversations(unique);
-    } catch {}
-  };
-
-  const fetchAvailableUsers = async () => { try { const r = await axios.get('/api/chat/users'); setAvailableUsers(r.data || []); } catch {} };
-
-  const fetchChatMessages = async (otherId, otherRole) => {
-    try {
-      const r = await axios.get(`/api/chat/messages/${otherId}?otherRole=${otherRole || ''}`);
-      setChatMessages(r.data || []);
-      fetchConversations(); fetchUnread();
-    } catch {}
-  };
-
-  const selectChat = (convo) => {
-    setSelectedChat(convo);
-    fetchChatMessages(convo.other_user_id, convo.other_user_role);
-  };
-
-  const startNewChat = (targetUser) => {
-    const existing = conversations.find(c => c.other_user_id === targetUser.id && c.other_user_role === targetUser.role);
-    if (existing) { selectChat(existing); }
-    else {
-      setSelectedChat({ other_user_id: targetUser.id, other_user_name: targetUser.name, other_user_role: targetUser.role, department: targetUser.department });
-      setChatMessages([]);
-    }
-    setShowNewChat(false); setUserSearch('');
-  };
-
-  const sendChatMessage = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || !selectedChat || chatSending) return;
-    setChatSending(true);
-    try {
-      await axios.post('/api/chat/send', { receiverId: selectedChat.other_user_id, receiverRole: selectedChat.other_user_role, message: chatInput.trim() });
-      setChatInput('');
-      fetchChatMessages(selectedChat.other_user_id, selectedChat.other_user_role);
-      fetchConversations();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to send.'); }
-    finally { setChatSending(false); }
-  };
-
-  const deleteConversation = async (convo) => {
-    if (!window.confirm(`Delete entire conversation with ${convo.other_user_name}? This cannot be undone.`)) return;
-    setDeletingConvo(convo.other_user_id);
-    try {
-      await axios.delete(`/api/chat/conversation/${convo.other_user_id}?otherRole=${convo.other_user_role}`);
-      if (selectedChat?.other_user_id === convo.other_user_id) { setSelectedChat(null); setChatMessages([]); }
-      fetchConversations();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to delete.'); }
-    finally { setDeletingConvo(null); }
-  };
-
-  const handleChatKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(e); } };
 
   const toggleBlock = async (date, isBlocked) => {
     try {
@@ -301,14 +216,6 @@ export default function DoctorDashboard({ onLogout, user }) {
     { id: 'chat',         label: 'Messages',       icon: '💬', badge: unreadCount },
     { id: 'diagnoses',    label: 'AI Diagnoses',   icon: '🤖' },
   ];
-
-  const filteredConvos = conversations.filter(c =>
-    !chatSearch || c.other_user_name?.toLowerCase().includes(chatSearch.toLowerCase())
-  );
-
-  const groupedAvailable = availableUsers
-    .filter(u => u.name.toLowerCase().includes(userSearch.toLowerCase()) || (u.department||'').toLowerCase().includes(userSearch.toLowerCase()))
-    .reduce((acc, u) => { const g = ROLE_LABELS[u.role]+'s'; if (!acc[g]) acc[g]=[]; acc[g].push(u); return acc; }, {});
 
   if (loading) return <div className="spinner" style={{ marginTop: 80 }} />;
 
@@ -521,169 +428,11 @@ export default function DoctorDashboard({ onLogout, user }) {
           </div>
         )}
 
-        {/* ── CHAT (full parity with patient chat) ── */}
         {activePage === 'chat' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div className="page-header" style={{ marginBottom: 0 }}><h1>Messages</h1><p>Chat with patients, admins and other doctors</p></div>
-              <button className="btn btn-primary" onClick={() => setShowNewChat(true)}>+ New Message</button>
-            </div>
-
-            <div className="chat-layout">
-              {/* Sidebar */}
-              <div className="chat-sidebar">
-                <div className="chat-sidebar-header">
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#000000' }}>Conversations</span>
-                  {unreadCount > 0 && <span className="nav-badge" style={{ position: 'static' }}>{unreadCount} unread</span>}
-                </div>
-                <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f0f0' }}>
-                  <input className="form-input" placeholder="Search..." style={{ fontSize: 12.5, padding: '7px 10px' }}
-                    value={chatSearch} onChange={e => setChatSearch(e.target.value)} />
-                </div>
-                <div className="chat-list">
-                  {filteredConvos.length === 0 ? (
-                    <div className="empty-state" style={{ padding: '30px 16px' }}><div className="emoji">💬</div><h3>No conversations</h3><p>Start a new message</p></div>
-                  ) : filteredConvos.map(c => {
-                    const isActive = selectedChat?.other_user_id === c.other_user_id && selectedChat?.other_user_role === c.other_user_role;
-                    return (
-                      <div key={`${c.other_user_role}:${c.other_user_id}`}
-                        className={`chat-item ${isActive ? 'active' : ''}`}
-                        style={{ position: 'relative' }}
-                        onClick={() => selectChat(c)}>
-                        <Avatar name={c.other_user_name} role={c.other_user_role} />
-                        <div className="chat-item-info" style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                            <span className="chat-item-name">{c.other_user_name}</span>
-                            <RoleBadge role={c.other_user_role} />
-                          </div>
-                          <div className="chat-item-last" style={{ color: '#000000', fontSize: 11.5 }}>{c.last_message || 'Start a conversation'}</div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                          {c.last_message_time && <span style={{ fontSize: 10.5, color: '#000000' }}>{fmt(c.last_message_time)}</span>}
-                          {c.unread_count > 0 && <span className="nav-badge" style={{ position: 'static' }}>{c.unread_count}</span>}
-                          <button
-                            onClick={e => { e.stopPropagation(); deleteConversation(c); }}
-                            disabled={deletingConvo === c.other_user_id}
-                            title="Delete conversation"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#000000', fontSize: 13, padding: '2px 4px', borderRadius: 4, transition: 'color 0.15s' }}
-                            onMouseOver={e => e.currentTarget.style.color = '#e74c3c'}
-                            onMouseOut={e => e.currentTarget.style.color = '#ccc'}>🗑</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Chat main */}
-              <div className="chat-main">
-                {!selectedChat ? (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, background: '#fafafa' }}>
-                    <div style={{ fontSize: '3rem' }}>💬</div>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: '#000000' }}>Select a conversation</div>
-                    <div style={{ fontSize: 13, color: '#000000' }}>or start a new one</div>
-                    <button className="btn btn-primary btn-sm" onClick={() => setShowNewChat(true)}>New Message</button>
-                  </div>
-                ) : (
-                  <>
-                    {/* Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', background: 'white' }}>
-                      <Avatar name={selectedChat.other_user_name} role={selectedChat.other_user_role} size={40} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: '#000000' }}>{selectedChat.other_user_name}</div>
-                        <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                          <RoleBadge role={selectedChat.other_user_role} />
-                          {selectedChat.department && <span style={{ color: '#000000' }}>· {selectedChat.department}</span>}
-                        </div>
-                      </div>
-                      <button onClick={() => deleteConversation(selectedChat)}
-                        style={{ background: '#fff0f0', border: '1px solid #fdd', color: '#000000', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                        🗑 Delete Chat
-                      </button>
-                    </div>
-
-                    {/* Messages */}
-                    <div className="chat-messages" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {chatMessages.length === 0 && (
-                        <div style={{ textAlign: 'center', color: '#000000', fontSize: 13, padding: 20 }}>No messages yet. Say hello! 👋</div>
-                      )}
-                      {groupByDate(chatMessages).map((item, i) => {
-                        if (item.type === 'date') return (
-                          <div key={i} style={{ textAlign: 'center', margin: '12px 0 4px', fontSize: 11, color: '#000000', fontWeight: 600 }}>── {item.label} ──</div>
-                        );
-                        const msg = item.msg;
-                        const isMine = msg.sender_id === user.id && msg.sender_role === user.role;
-                        return (
-                          <div key={msg.id || i} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', marginBottom: 6 }}>
-                            {!isMine && (
-                              <div style={{ fontSize: 10.5, color: '#000000', marginBottom: 3, marginLeft: 4, fontWeight: 500 }}>{selectedChat.other_user_name}</div>
-                            )}
-                            <div style={{
-                              maxWidth: '70%', padding: '10px 14px',
-                              borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                              background: isMine ? '#2563EB' : 'white',
-                              color: isMine ? 'white' : '#1a1a2e',
-                              boxShadow: isMine ? '0 2px 8px rgba(67,97,238,0.25)' : '0 2px 8px rgba(0,0,0,0.08)',
-                              border: isMine ? 'none' : '1px solid #f0f0f0',
-                              fontSize: 13.5, lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap',
-                            }}>{msg.message}</div>
-                            <div style={{ fontSize: 10, color: '#000000', marginTop: 3, marginLeft: isMine ? 0 : 4, marginRight: isMine ? 4 : 0 }}>
-                              {fmt(msg.created_at)}
-                              {isMine && <span style={{ marginLeft: 4, color: msg.is_read ? '#2563EB' : '#ccc' }}>{msg.is_read ? '✓✓' : '✓'}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Input */}
-                    <div style={{ padding: '12px 28px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 12, alignItems: 'flex-end', background: 'white', overflow: 'visible' }}>
-                      <textarea rows={1} placeholder={`Message ${selectedChat.other_user_name}...`}
-                        value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={handleChatKey}
-                        style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1.5px solid #e0e0e0', outline: 'none', fontFamily: 'inherit' }} />
-                      <button onClick={sendChatMessage} disabled={!chatInput.trim() || chatSending}
-                        style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: chatInput.trim() ? '#2563EB' : '#D1D5DB', color: 'white', fontSize: 14, cursor: chatInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s' }}>
-                        {chatSending ? '…' : '↑'}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* New Chat Modal */}
-            {showNewChat && (
-              <div className="modal-overlay" onClick={() => setShowNewChat(false)}>
-                <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-                  <div className="modal-header"><span className="modal-title">New Message</span><button className="modal-close" onClick={() => setShowNewChat(false)}>✕</button></div>
-                  <input className="form-input" placeholder="Search by name or department..." autoFocus value={userSearch} onChange={e => setUserSearch(e.target.value)} style={{ marginBottom: 16 }} />
-                  <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                    {Object.keys(groupedAvailable).length === 0 ? (
-                      <div className="empty-state"><div className="emoji">🔍</div><h3>No users found</h3></div>
-                    ) : Object.entries(groupedAvailable).map(([group, users]) => (
-                      <div key={group}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#000000', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '10px 0 6px' }}>{group}</div>
-                        {users.map(u => (
-                          <div key={`${u.role}:${u.id}`} onClick={() => startNewChat(u)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, border: '1px solid #f0f0f0', transition: 'background 0.1s' }}
-                            onMouseOver={e => e.currentTarget.style.background = '#fafafa'}
-                            onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
-                            <Avatar name={u.name} role={u.role} size={36} />
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{u.name}</div>
-                              <div style={{ fontSize: 12, color: '#000000' }}>{u.department || u.email || ROLE_LABELS[u.role]}</div>
-                            </div>
-                            <RoleBadge role={u.role} />
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <MessagingPanel
+            initialTarget={chatTarget}
+            onTargetConsumed={() => setChatTarget(null)}
+          />
         )}
 
         {/* ── AI DIAGNOSES ── */}
@@ -707,7 +456,7 @@ export default function DoctorDashboard({ onLogout, user }) {
                     </div>
                     <div style={{ background: 'var(--grey-50)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, color: '#000000', lineHeight: 1.7, maxHeight: 200, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>{d.diagnosis}</div>
                     <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }}
-                      onClick={() => { startNewChat({ id: d.patient_id, name: d.patient_name, role: 'patient' }); setActivePage('chat'); }}>
+                      onClick={() => { setChatTarget({ id: d.patient_id, name: d.patient_name, role: 'patient' }); setActivePage('chat'); }}>
                       💬 Message Patient
                     </button>
                   </div>

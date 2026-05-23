@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import AiUsagePanel from '../components/AiUsagePanel';
 
 const SUGGESTED = [
   'What are the symptoms of diabetes?',
@@ -161,6 +162,7 @@ export default function EducationPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
   const chatEndRef = useRef(null);
+  const usageRefreshRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -192,8 +194,13 @@ export default function EducationPage() {
       const answer = res.data.answer;
       setMessages(prev => [...prev, { role: 'ai', text: answer }]);
       saveToHistory(q, answer);
-    } catch {
-      setMessages(prev => [...prev, { role: 'ai', text: '⚠️ Could not get a response. Please check the backend and your Gemini API key.' }]);
+      usageRefreshRef.current?.();
+    } catch (err) {
+      const msg = err.response?.status === 402
+        ? (err.response?.data?.error || 'Monthly AI limit reached. Upgrade your plan to continue.')
+        : '⚠️ Could not get a response. Please check the backend and your Gemini API key.';
+      setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+      if (err.response?.status === 402) usageRefreshRef.current?.();
     } finally { setLoading(false); }
   };
 
@@ -240,6 +247,8 @@ export default function EducationPage() {
           </button>
         </div>
       </div>
+
+      <AiUsagePanel refreshRef={usageRefreshRef} />
 
       <div style={{ display: 'grid', gridTemplateColumns: showHistory ? '1fr 300px' : '1fr', gap: 16 }}>
         {/* ── Main Chat ── */}

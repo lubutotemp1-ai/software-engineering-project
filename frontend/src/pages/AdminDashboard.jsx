@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSidebarOpen } from '../hooks/useSidebarOpen';
 import SidebarToggle from '../components/SidebarToggle';
 import FlashBanner from '../components/FlashBanner';
+import MessagingPanel from '../components/MessagingPanel';
 import { useFlashMessage } from '../utils/flashMessage';
 
 const COUNTRY_CODES = [
@@ -21,28 +22,6 @@ function Avatar({ name, role, size = 36 }) {
   return <div style={{ width: size, height: size, borderRadius: '50%', background: ROLE_BG[role] || 'var(--blue-200)', color: ROLE_COLORS[role] || 'var(--grey-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.37, fontWeight: 700, flexShrink: 0 }}>{initials}</div>;
 }
 
-function RoleBadge({ role }) {
-  const ROLE_LABELS = { patient: 'Patient', doctor: 'Doctor', admin: 'Admin' };
-  return (
-    <span style={{
-      fontSize: 10, padding: '2px 8px', borderRadius: 12,
-      background: ROLE_BG[role] || 'var(--blue-200)',
-      color: ROLE_COLORS[role] || 'var(--grey-600)',
-      fontWeight: 700, border: `1px solid ${ROLE_COLORS[role] || 'var(--grey-300)'}`
-    }}>{ROLE_LABELS[role]}</span>
-  );
-}
-
-function groupByDate(msgs) {
-  const groups = []; let lastDate = null;
-  for (const msg of msgs) {
-    const d = new Date(msg.created_at).toDateString();
-    if (d !== lastDate) { groups.push({ type: 'date', label: d === new Date().toDateString() ? 'Today' : d }); lastDate = d; }
-    groups.push({ type: 'msg', msg });
-  }
-  return groups;
-}
-
 export default function AdminDashboard({ user, onLogout }) {
   const [activePage, setActivePage] = useState('overview');
   const { isOpen, setIsOpen, closeOnMobile } = useSidebarOpen();
@@ -58,43 +37,21 @@ export default function AdminDashboard({ user, onLogout }) {
   const [showPw, setShowPw] = useState(false);
   const [phoneCC, setPhoneCC] = useState('+260');
   const [doctorForm, setDoctorForm] = useState({ name: '', email: '', password: '', phoneNumber: '', department: '', specialization: '' });
-  // Chat
-  const [conversations, setConversations] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatSending, setChatSending] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState([]);
-  const [showNewChat, setShowNewChat] = useState(false);
-  const [userSearch, setUserSearch] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-  const messagesEndRef = useRef(null);
-  const pollingRef = useRef(null);
 
-  useEffect(() => { fetchAll(); return () => { if (pollingRef.current) clearInterval(pollingRef.current); }; }, []);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
-  useEffect(() => {
-    if (pollingRef.current) clearInterval(pollingRef.current);
-    if (selectedChat) {
-      pollingRef.current = setInterval(() => fetchChatMessages(selectedChat.other_user_id, selectedChat.other_user_role), 5000);
-    }
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [selectedChat]);
+  useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     try {
-      await Promise.all([fetchDoctors(), fetchPatients(), fetchAppointments(), fetchConversations(), fetchAvailableUsers(), fetchUnread(), fetchStats()]);
+      await Promise.all([fetchDoctors(), fetchPatients(), fetchAppointments(), fetchUnread(), fetchStats()]);
     } finally { setLoading(false); }
   };
 
   const fetchDoctors = async () => { const r = await axios.get('/api/admin/doctors'); setDoctors(r.data); };
   const fetchPatients = async () => { const r = await axios.get('/api/admin/patients'); setPatients(r.data); };
   const fetchAppointments = async () => { const r = await axios.get('/api/admin/appointments'); setAppointments(r.data); };
-  const fetchConversations = async () => { try { const r = await axios.get('/api/chat/conversations'); setConversations(r.data || []); } catch {} };
-  const fetchAvailableUsers = async () => { try { const r = await axios.get('/api/chat/users'); setAvailableUsers(r.data || []); } catch {} };
   const fetchUnread = async () => { try { const r = await axios.get('/api/chat/unread-count'); setUnreadCount(r.data.count); } catch {} };
-  const fetchStats = async () => { try { const r = await axios.get('/api/admin/stats'); setStats(r.data); console.log('Stats fetched:', r.data); } catch (err) { console.error('Error fetching stats:', err); } };
-  const fetchChatMessages = async (otherId, otherRole) => { const r = await axios.get(`/api/chat/messages/${otherId}?otherRole=${otherRole || ''}`); setChatMessages(r.data || []); fetchConversations(); fetchUnread(); };
+  const fetchStats = async () => { try { const r = await axios.get('/api/admin/stats'); setStats(r.data); } catch (err) { console.error('Error fetching stats:', err); } };
 
   const { show: showMsg, dismiss: dismissMsg } = useFlashMessage(setSuccess, setError);
 
@@ -128,22 +85,6 @@ export default function AdminDashboard({ user, onLogout }) {
     setDoctorForm({ name: doc.name, email: doc.email, password: '', phoneNumber: num || '', department: doc.department, specialization: doc.specialization || '' });
     setShowAddDoctor(true);
   };
-
-  const selectChat = (c) => { setSelectedChat(c); fetchChatMessages(c.other_user_id, c.other_user_role); };
-  const startNewChat = (u) => {
-    const existing = conversations.find(c => c.other_user_id === u.id);
-    if (existing) selectChat(existing);
-    else { setSelectedChat({ other_user_id: u.id, other_user_name: u.name, other_user_role: u.role }); setChatMessages([]); }
-    setShowNewChat(false);
-  };
-  const sendChatMessage = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || !selectedChat || chatSending) return;
-    setChatSending(true);
-    try { await axios.post('/api/chat/send', { receiverId: selectedChat.other_user_id, receiverRole: selectedChat.other_user_role, message: chatInput.trim() }); setChatInput(''); fetchChatMessages(selectedChat.other_user_id, selectedChat.other_user_role); fetchConversations(); } finally { setChatSending(false); }
-  };
-  const handleChatKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(e); } };
-  const fmt = (ts) => { const d = new Date(ts); const diff = Date.now() - d; if (diff < 60000) return 'Just now'; if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`; if (diff < 86400000) return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }); return d.toLocaleDateString('en', { month: 'short', day: 'numeric' }); };
 
   const navItems = [
     { id: 'overview', label: 'Overview', icon: '📊' },
@@ -355,125 +296,7 @@ export default function AdminDashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* CHAT */}
-        {activePage === 'chat' && (
-          <div>
-            <div className="flex-between" style={{ marginBottom: 16 }}>
-              <div className="page-header" style={{ marginBottom: 0 }}><h1>Messages</h1><p>Chat with doctors and patients</p></div>
-              <button className="btn btn-primary" onClick={() => setShowNewChat(true)}>+ New Message</button>
-            </div>
-            <div className="chat-layout">
-              <div className="chat-sidebar">
-                <div className="chat-sidebar-header">
-                  <span style={{ fontSize: '13px', fontWeight: 600 }}>Conversations</span>
-                  {unreadCount > 0 && <span className="nav-badge" style={{ position: 'static' }}>{unreadCount} unread</span>}
-                </div>
-                <div className="chat-list">
-                  {conversations.length === 0 ? <div className="empty-state" style={{ padding: '30px 16px' }}><div className="emoji">💬</div><h3>No conversations</h3></div>
-                    : conversations.map(c => (
-                      <div key={c.other_user_id} className={`chat-item ${selectedChat?.other_user_id === c.other_user_id ? 'active' : ''}`} onClick={() => selectChat(c)}>
-                        <Avatar name={c.other_user_name} role={c.other_user_role} />
-                        <div className="chat-item-info">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span className="chat-item-name">{c.other_user_name}</span>
-                            <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: 8, background: ROLE_BG[c.other_user_role], color: ROLE_COLORS[c.other_user_role], fontWeight: 600 }}>{c.other_user_role}</span>
-                          </div>
-                          <div className="chat-item-last">{c.last_message || 'No messages yet'}</div>
-                        </div>
-                        {c.unread_count > 0 && <span className="nav-badge" style={{ position: 'static' }}>{c.unread_count}</span>}
-                      </div>
-                    ))}
-                </div>
-              </div>
-              <div className="chat-main">
-                {!selectedChat ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10, background: 'var(--grey-50)' }}><div style={{ fontSize: '2.5rem' }}>💬</div><div style={{ fontWeight: 600, color: '#000000' }}>Select a conversation</div><button className="btn btn-primary btn-sm" onClick={() => setShowNewChat(true)}>New Message</button></div> : (
-                  <>
-                    <div className="chat-header" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #E5E7EB', background: '#ffffff' }}>
-                      <Avatar name={selectedChat.other_user_name} role={selectedChat.other_user_role} size={40} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: '#000000' }}>{selectedChat.other_user_name}</div>
-                        <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                          <RoleBadge role={selectedChat.other_user_role} />
-                        </div>
-                      </div>
-                      <button onClick={() => deleteConversation(selectedChat)}
-                        style={{ background: '#fff0f0', border: '1px solid #fdd', color: '#000000', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                        🗑 Delete
-                      </button>
-                    </div>
-                    <div className="chat-messages" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {chatMessages.length === 0 && (
-                        <div style={{ textAlign: 'center', color: '#000000', fontSize: 13, padding: 20 }}>No messages yet. Say hello! 👋</div>
-                      )}
-                      {groupByDate(chatMessages).map((item, i) => {
-                        if (item.type === 'date') return (
-                          <div key={i} style={{ textAlign: 'center', margin: '12px 0 4px', fontSize: 11, color: '#000000', fontWeight: 600 }}>── {item.label} ──</div>
-                        );
-                        const msg = item.msg;
-                        const isMine = msg.sender_id === user.id && msg.sender_role === user.role;
-                        return (
-                          <div key={msg.id || i} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', marginBottom: 6 }}>
-                            {!isMine && (
-                              <div style={{ fontSize: 10.5, color: '#000000', marginBottom: 3, marginLeft: 4, fontWeight: 500 }}>{selectedChat.other_user_name}</div>
-                            )}
-                            <div style={{
-                              maxWidth: '70%', padding: '10px 14px',
-                              borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                              background: isMine ? '#2563EB' : 'white',
-                              color: isMine ? 'white' : '#111827',
-                              boxShadow: isMine ? '0 2px 8px rgba(37, 99, 235, 0.15)' : '0 2px 8px rgba(0,0,0,0.06)',
-                              border: isMine ? 'none' : '1px solid #E5E7EB',
-                              fontSize: 13.5, lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap',
-                            }}>{msg.message}</div>
-                            <div style={{ fontSize: 10, color: '#000000', marginTop: 3, marginLeft: isMine ? 0 : 4, marginRight: isMine ? 4 : 0 }}>
-                              {fmt(msg.created_at)}
-                              {isMine && <span style={{ marginLeft: 4, color: msg.is_read ? '#2563EB' : '#9CA3AF' }}>{msg.is_read ? '✓✓' : '✓'}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div ref={messagesEndRef} />
-                    </div>
-                    <div style={{ padding: '12px 28px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 12, alignItems: 'flex-end', background: 'white', overflow: 'visible' }}>
-                      <textarea rows={1} placeholder={`Message ${selectedChat.other_user_name}...`}
-                        value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={handleChatKey}
-                        style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1.5px solid #E5E7EB', outline: 'none', fontFamily: 'inherit' }} />
-                      <button onClick={sendChatMessage} disabled={!chatInput.trim() || chatSending}
-                        style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: chatInput.trim() ? '#2563EB' : '#D1D5DB', color: 'white', fontSize: 14, cursor: chatInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s' }}>
-                        {chatSending ? '…' : '↑'}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            {showNewChat && (
-              <div className="modal-overlay" onClick={() => setShowNewChat(false)}>
-                <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-                  <div className="modal-header"><span className="modal-title">New Message</span><button className="modal-close" onClick={() => setShowNewChat(false)}>✕</button></div>
-                  <input className="form-input" placeholder="Search by name or department..." autoFocus value={userSearch} onChange={e => setUserSearch(e.target.value)} style={{ marginBottom: 16 }} />
-                  <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                    {availableUsers.filter(u => u.name.toLowerCase().includes(userSearch.toLowerCase()) || (u.department || '').toLowerCase().includes(userSearch.toLowerCase())).length === 0 ? (
-                      <div className="empty-state"><div className="emoji">🔍</div><h3>No users found</h3></div>
-                    ) : availableUsers.filter(u => u.name.toLowerCase().includes(userSearch.toLowerCase()) || (u.department || '').toLowerCase().includes(userSearch.toLowerCase())).map(u => (
-                      <div key={`${u.role}:${u.id}`} onClick={() => startNewChat(u)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, border: '1px solid #E5E7EB', transition: 'background 0.1s' }}
-                        onMouseOver={e => e.currentTarget.style.background = '#F9FAFB'}
-                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
-                        <Avatar name={u.name} role={u.role} size={36} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13.5, color: '#000000' }}>{u.name}</div>
-                          <div style={{ fontSize: 12, color: '#000000' }}>{u.department || u.email || (u.role.charAt(0).toUpperCase() + u.role.slice(1))}</div>
-                        </div>
-                        <RoleBadge role={u.role} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {activePage === 'chat' && <MessagingPanel />}
       </main>
 
       {/* ADD/EDIT DOCTOR MODAL */}

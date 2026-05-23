@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const authMiddleware = require('../middleware/auth');
+const { consumeAiUse } = require('../utils/aiUsage');
 
 router.use(authMiddleware);
 
@@ -12,6 +13,16 @@ router.post('/check', async (req, res) => {
 
     if (!symptoms || symptoms.trim() === '') {
       return res.status(400).json({ error: 'Symptoms are required.' });
+    }
+
+    if (req.user.role === 'patient') {
+      const usage = await consumeAiUse(req.user.id);
+      if (!usage.allowed) {
+        return res.status(402).json({
+          error: `Monthly AI limit reached (${usage.used}/${usage.limit}). Upgrade your plan for more uses.`,
+          usage,
+        });
+      }
     }
 
     const { GoogleGenAI } = require('@google/genai');
