@@ -73,7 +73,7 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
 
     console.log("Sending symptoms to Gemini model...");
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
     console.log("Received response from Gemini model");
