@@ -2,7 +2,15 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const db = require('../db/database');
-const { PLANS, getUsageStatus, setUserPlan } = require('../utils/aiUsage');
+const { PLANS, getUsageStatus, setUserPlan, getOrCreateSubscription } = require('../utils/aiUsage');
+
+function normalizeFrontendUrl(rawUrl) {
+  const url = (rawUrl || 'http://localhost:3000').trim().replace(/\/$/, '');
+  if (!/^https?:\/\//i.test(url)) {
+    return `https://${url}`;
+  }
+  return url;
+}
 
 router.use(authMiddleware);
 
@@ -67,7 +75,7 @@ router.post('/checkout', async (req, res) => {
     }
 
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    const frontend = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const frontend = normalizeFrontendUrl(process.env.FRONTEND_URL);
     const tier = PLANS[plan];
 
     const session = await stripe.checkout.sessions.create({
@@ -115,7 +123,7 @@ router.post('/billing-portal', async (req, res) => {
       });
     }
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    const frontend = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const frontend = normalizeFrontendUrl(process.env.FRONTEND_URL);
     const session = await stripe.billingPortal.sessions.create({
       customer: row.stripe_customer_id,
       return_url: `${frontend}/?ai_subscription=return&page=records`,
@@ -129,15 +137,37 @@ router.post('/billing-portal', async (req, res) => {
 
 router.post('/reset-usage', async (req, res) => {
   try {
+    const { userId, email } = req.body;
+
     if (req.user.role === 'admin') {
-      await db.run_('UPDATE user_ai_subscriptions SET uses_this_month = 0, updated_at = NOW()');
-      return res.json({ reset: true, message: 'Reset usage for all users.' });
+      if (!userId && !email) {
+        return res.status(400).json({ error: 'Provide userId or email to reset a patient usage.' });
+      }
+
+      let targetUser = null;
+      if (userId) {
+        targetUser = await db.get_('SELECT id, role, email FROM users WHERE id = ?', [userId]);
+      } else {
+        targetUser = await db.get_('SELECT id, role, email FROM users WHERE email = ?', [email]);
+      }
+
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Patient not found.' });
+      }
+      if (targetUser.role !== 'patient') {
+        return res.status(400).json({ error: 'Can only reset usage for patient accounts.' });
+      }
+
+      await getOrCreateSubscription(targetUser.id);
+      await db.run_('UPDATE user_ai_subscriptions SET uses_this_month = 0, updated_at = NOW() WHERE user_id = ?', [targetUser.id]);
+      return res.json({ reset: true, message: `Reset monthly AI usage for patient ${targetUser.email}.` });
     }
 
     if (req.user.role !== 'patient') {
       return res.status(403).json({ error: 'Only patients and admins can reset AI usage.' });
     }
 
+    await getOrCreateSubscription(req.user.id);
     await db.run_('UPDATE user_ai_subscriptions SET uses_this_month = 0, updated_at = NOW() WHERE user_id = ?', [req.user.id]);
     res.json({ reset: true, message: 'Reset usage for current user.' });
   } catch (err) {

@@ -93,4 +93,4 @@ async function setUserPlan(userId, plan, stripeIds = {}) {
   return getUsageStatus(uid);
 }
 
-module.exports = { PLANS, getUsageStatus, consumeAiUse, setUserPlan, getLimit };
+module.exports = { PLANS, getUsageStatus, consumeAiUse, setUserPlan, getOrCreateSubscription, getLimit };

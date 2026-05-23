@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
-const { consumeAiUse, getUsageStatus } = require('../utils/aiUsage');
 
 function getModelText(response) {
   if (!response) return '';
@@ -18,16 +17,6 @@ router.use(authMiddleware);
 router.post('/ask', async (req, res) => {
   const { question } = req.body;
   if (!question) return res.status(400).json({ error: 'Question is required.' });
-
-  if (req.user.role === 'patient') {
-    const usage = await getUsageStatus(req.user.id);
-    if (!usage.allowed) {
-      return res.status(402).json({
-        error: `Monthly AI limit reached (${usage.used}/${usage.limit}). Upgrade your plan for more uses.`,
-        usage,
-      });
-    }
-  }
 
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -48,9 +37,6 @@ Question: ${question}`,
     });
 
     const answerText = getModelText(response);
-    if (req.user.role === 'patient') {
-      await consumeAiUse(req.user.id);
-    }
     res.json({ answer: answerText });
 
   } catch (err) {
