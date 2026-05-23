@@ -52,7 +52,7 @@ router.post('/ask', async (req, res) => {
 
     console.log('Sending question to Gemini model...');
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-pro",
       contents: `You are a friendly health education assistant for a hospital portal.
 Answer the following health question in simple, easy-to-understand language.
 Keep the answer clear, accurate, and helpful. If it is a serious medical concern,
