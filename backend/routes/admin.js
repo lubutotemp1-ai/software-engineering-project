@@ -96,7 +96,7 @@ router.post('/doctors/:id/reset-password', async (req, res) => {
 // GET all patients
 router.get('/patients', async (req, res) => {
   try {
-    const patients = await db.all_('SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE role = "patient" ORDER BY name ASC');
+    const patients = await db.all_("SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE role = 'patient' ORDER BY name ASC");
     res.json(patients);
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });
@@ -104,7 +104,7 @@ router.get('/patients', async (req, res) => {
 // GET single patient details
 router.get('/patients/:id', async (req, res) => {
   try {
-    const patient = await db.get_('SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE id = ? AND role = "patient"', [req.params.id]);
+    const patient = await db.get_("SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE id = ? AND role = 'patient'", [req.params.id]);
     if (!patient) return res.status(404).json({ error: 'Patient not found.' });
     const appointments = await db.all_('SELECT * FROM appointments WHERE patient_id = ? ORDER BY appointment_date DESC', [req.params.id]);
     const healthRecords = await db.all_('SELECT * FROM health_records WHERE patient_id = ? ORDER BY record_date DESC', [req.params.id]);
@@ -143,16 +143,16 @@ router.put('/appointments/:id', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const [patients, doctors, appointments, pending] = await Promise.all([
-      db.get_('SELECT COUNT(*) as count FROM users WHERE role = "patient"'),
-      db.get_('SELECT COUNT(*) as count FROM doctors'),
-      db.get_('SELECT COUNT(*) as count FROM appointments'),
-      db.get_('SELECT COUNT(*) as count FROM appointments WHERE status = "pending"'),
+      db.get_("SELECT COUNT(*)::int AS count FROM users WHERE role = 'patient'"),
+      db.get_('SELECT COUNT(*)::int AS count FROM doctors'),
+      db.get_('SELECT COUNT(*)::int AS count FROM appointments'),
+      db.get_("SELECT COUNT(*)::int AS count FROM appointments WHERE status = 'pending'"),
     ]);
     res.json({
-      totalPatients: patients.count,
-      totalDoctors: doctors.count,
-      totalAppointments: appointments.count,
-      pendingAppointments: pending.count,
+      totalPatients: Number(patients?.count ?? 0),
+      totalDoctors: Number(doctors?.count ?? 0),
+      totalAppointments: Number(appointments?.count ?? 0),
+      pendingAppointments: Number(pending?.count ?? 0),
     });
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });

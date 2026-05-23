@@ -15,7 +15,7 @@ router.post('/patient/:patientId', async (req, res) => {
   
   try {
     // Verify the patient exists
-    const patient = await db.get_('SELECT id FROM users WHERE id = ? AND role = "patient"', [patientId]);
+    const patient = await db.get_("SELECT id FROM users WHERE id = ? AND role = 'patient'", [patientId]);
     if (!patient) return res.status(404).json({ error: 'Patient not found.' });
     
     const result = await db.run_(
@@ -39,7 +39,7 @@ router.post('/patient/:patientId/medication', async (req, res) => {
   
   try {
     // Verify the patient exists
-    const patient = await db.get_('SELECT id FROM users WHERE id = ? AND role = "patient"', [patientId]);
+    const patient = await db.get_("SELECT id FROM users WHERE id = ? AND role = 'patient'", [patientId]);
     if (!patient) return res.status(404).json({ error: 'Patient not found.' });
     
     const result = await db.run_(

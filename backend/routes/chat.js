@@ -97,7 +97,7 @@ router.get('/users', async (req, res) => {
 
     } else if (userRole === 'doctor') {
       // Doctors can communicate with patients, admins, AND other doctors
-      const patients = await db.all_('SELECT id, name, email FROM users WHERE role = "patient" ORDER BY name');
+      const patients = await db.all_("SELECT id, name, email FROM users WHERE role = 'patient' ORDER BY name");
       const admins   = await db.all_('SELECT id, name FROM admins ORDER BY name');
       const doctors  = await db.all_('SELECT id, name, department, specialization FROM doctors WHERE id != ? ORDER BY name', [userId]);
       users = [

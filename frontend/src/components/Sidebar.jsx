@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useSidebarOpen } from '../hooks/useSidebarOpen';
+import SidebarToggle from './SidebarToggle';
 import {
   LayoutDashboard,
   Calendar,
@@ -16,7 +18,7 @@ import {
 export default function Sidebar({ activePage, setActivePage }) {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen, closeOnMobile } = useSidebarOpen();
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -44,31 +46,7 @@ export default function Sidebar({ activePage, setActivePage }) {
 
   return (
     <>
-      <button 
-        className="sidebar-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Toggle sidebar"
-        style={{
-          position: 'fixed',
-          top: 20,
-          left: 20,
-          zIndex: 1001,
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <svg viewBox="-0.5 -0.5 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Sidebar-Collapse--Streamline-Iconoir" height="24" width="24">
-          <desc>Sidebar Collapse Streamline Icon: https://streamlinehq.com</desc>
-          <path d="M12.7769375 14.284625H2.2230625c-0.8326875 0 -1.5076875 -0.675 -1.5076875 -1.5076875l0 -10.553875c0 -0.8326875 0.675 -1.5076875 1.5076875 -1.5076875h10.553875c0.8326875 0 1.5076875 0.675 1.5076875 1.5076875v10.553875c0 0.8326875 -0.675 1.5076875 -1.5076875 1.5076875Z" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-          <path d="M3.9192500000000003 5.9923125 2.6 7.5l1.3192499999999998 1.5076875" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-          <path d="M5.615375 14.284625V0.7153750000000001" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-        </svg>
-      </button>
+      <SidebarToggle isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)} />
       {isOpen && (
         <div 
           className="sidebar-overlay"
@@ -112,7 +90,7 @@ export default function Sidebar({ activePage, setActivePage }) {
         <nav className="sidebar-nav">
           {navItems.map(item => (
             <button key={item.id} className={`nav-item ${activePage === item.id ? 'active' : ''}`}
-              onClick={() => setActivePage(item.id)}
+              onClick={() => { setActivePage(item.id); closeOnMobile(); }}
               title={item.label}
               aria-label={item.label}>
               <span className="nav-icon">

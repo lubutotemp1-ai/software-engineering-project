@@ -134,11 +134,14 @@ export default function ChatPage() {
   const fetchMessages = async (otherUserId, otherRole) => {
     try {
       const res = await axios.get(`/api/chat/messages/${otherUserId}?otherRole=${otherRole || ''}`);
-      setMessages(res.data || []);
+      const data = res.data || [];
+      setMessages((prev) => {
+        if (data.length === 0 && prev.length > 0) return prev;
+        return data;
+      });
       fetchConversations();
     } catch (err) {
       console.error('Error fetching messages:', err.response?.data?.error || err.message);
-      setMessages([]);
     }
   };
 
@@ -184,7 +187,7 @@ export default function ChatPage() {
       console.log('Message sent successfully, response:', res.data);
       // Optimistically add message to UI immediately
       const newMessage = res.data?.chatMessage || {
-        id: Date.now(),
+        id: `temp-${Date.now()}`,
         sender_id: user.id,
         sender_role: user.role,
         receiver_id: selected.other_user_id,
@@ -193,12 +196,14 @@ export default function ChatPage() {
         is_read: false,
         created_at: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, newMessage]);
-      // Then fetch from server to sync
-      setTimeout(async () => {
-        await fetchMessages(selected.other_user_id, selected.other_user_role);
-        fetchConversations();
-      }, 500);
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === newMessage.id || (m.message === messageToSend && m.sender_id === user.id));
+        return exists ? prev : [...prev, newMessage];
+      });
+      fetchConversations();
+      setTimeout(() => {
+        fetchMessages(selected.other_user_id, selected.other_user_role);
+      }, 1200);
     } catch (err) {
       console.error('Error sending message:', err);
       alert(err.response?.data?.error || 'Failed to send message.');

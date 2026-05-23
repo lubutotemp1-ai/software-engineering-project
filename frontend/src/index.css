@@ -426,7 +426,27 @@ img {
 
 /* Sidebar toggle button */
 .sidebar-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all var(--transition-fast);
+}
+
+.sidebar-toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .sidebar-toggle:hover {
@@ -861,6 +881,27 @@ textarea.form-input {
   border: 1px solid var(--gray-200);
   background: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+.flash-banner {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flash-banner-dismiss {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  padding: 0 4px;
+}
+
+.flash-banner-dismiss:hover {
+  opacity: 1;
 }
 
 .alert-error {

@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useSidebarOpen } from '../hooks/useSidebarOpen';
+import SidebarToggle from '../components/SidebarToggle';
+import FlashBanner from '../components/FlashBanner';
+import { useFlashMessage } from '../utils/flashMessage';
 
 const COUNTRY_CODES = [
   { code: '+1', flag: '🇺🇸', name: 'US (+1)' }, { code: '+44', flag: '🇬🇧', name: 'UK (+44)' },
@@ -41,7 +45,7 @@ function groupByDate(msgs) {
 
 export default function AdminDashboard({ user, onLogout }) {
   const [activePage, setActivePage] = useState('overview');
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen, closeOnMobile } = useSidebarOpen();
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -92,10 +96,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const fetchStats = async () => { try { const r = await axios.get('/api/admin/stats'); setStats(r.data); console.log('Stats fetched:', r.data); } catch (err) { console.error('Error fetching stats:', err); } };
   const fetchChatMessages = async (otherId, otherRole) => { const r = await axios.get(`/api/chat/messages/${otherId}?otherRole=${otherRole || ''}`); setChatMessages(r.data || []); fetchConversations(); fetchUnread(); };
 
-  const showMsg = (msg, isErr = false) => {
-    if (isErr) setError(msg); else setSuccess(msg);
-    setTimeout(() => { setSuccess(''); setError(''); }, 4000);
-  };
+  const { show: showMsg, dismiss: dismissMsg } = useFlashMessage(setSuccess, setError);
 
   const handleAddDoctor = async (e) => {
     e.preventDefault();
@@ -112,12 +113,13 @@ export default function AdminDashboard({ user, onLogout }) {
       setEditDoctor(null);
       setDoctorForm({ name: '', email: '', password: '', phoneNumber: '', department: '', specialization: '' });
       fetchDoctors();
+      fetchStats();
     } catch (err) { showMsg(err.response?.data?.error || 'Failed to save doctor.', true); }
   };
 
   const deleteDoctor = async (id) => {
     if (!window.confirm('Remove this doctor?')) return;
-    try { await axios.delete(`/api/admin/doctors/${id}`); showMsg('Doctor removed.'); fetchDoctors(); } catch { showMsg('Failed.', true); }
+    try { await axios.delete(`/api/admin/doctors/${id}`); showMsg('Doctor removed.'); fetchDoctors(); fetchStats(); } catch { showMsg('Failed.', true); }
   };
 
   const openEdit = (doc) => {
@@ -144,7 +146,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const fmt = (ts) => { const d = new Date(ts); const diff = Date.now() - d; if (diff < 60000) return 'Just now'; if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`; if (diff < 86400000) return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }); return d.toLocaleDateString('en', { month: 'short', day: 'numeric' }); };
 
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: '⬛' },
+    { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'doctors', label: 'Doctors', icon: '🩺' },
     { id: 'patients', label: 'Patients', icon: '👤' },
     { id: 'appointments', label: 'Appointments', icon: '📅' },
@@ -158,31 +160,7 @@ export default function AdminDashboard({ user, onLogout }) {
 
   return (
     <div className="app-layout">
-      <button 
-        className="sidebar-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Toggle sidebar"
-        style={{
-          position: 'fixed',
-          top: 20,
-          left: 20,
-          zIndex: 1001,
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <svg viewBox="-0.5 -0.5 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Sidebar-Collapse--Streamline-Iconoir" height="24" width="24">
-          <desc>Sidebar Collapse Streamline Icon: https://streamlinehq.com</desc>
-          <path d="M12.7769375 14.284625H2.2230625c-0.8326875 0 -1.5076875 -0.675 -1.5076875 -1.5076875l0 -10.553875c0 -0.8326875 0.675 -1.5076875 1.5076875 -1.5076875h10.553875c0.8326875 0 1.5076875 0.675 1.5076875 1.5076875v10.553875c0 0.8326875 -0.675 1.5076875 -1.5076875 1.5076875Z" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-          <path d="M3.9192500000000003 5.9923125 2.6 7.5l1.3192499999999998 1.5076875" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-          <path d="M5.615375 14.284625V0.7153750000000001" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-        </svg>
-      </button>
+      <SidebarToggle isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)} />
       {isOpen && (
         <div 
           className="sidebar-overlay"
@@ -199,7 +177,7 @@ export default function AdminDashboard({ user, onLogout }) {
           }}
         />
       )}
-      <aside className={`sidebar admin-sidebar ${isOpen ? 'open' : 'closed'}`} style={{ background: 'var(--blue-900)', color: '#000000' }}>
+      <aside className={`sidebar admin-sidebar ${isOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button 
             className="sidebar-close"
@@ -224,29 +202,30 @@ export default function AdminDashboard({ user, onLogout }) {
         </div>
         <nav className="sidebar-nav">
           {navItems.map(item => (
-            <button key={item.id} className={`nav-item ${activePage === item.id ? 'active' : ''}`} onClick={() => setActivePage(item.id)} title={item.label} aria-label={item.label}>
-              <span className="nav-icon">{item.icon}</span>{item.label}
+            <button key={item.id} className={`nav-item ${activePage === item.id ? 'active' : ''}`} onClick={() => { setActivePage(item.id); closeOnMobile(); }} title={item.label} aria-label={item.label}>
+              <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
               {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
             </button>
           ))}
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-user">
-            <div className="sidebar-avatar" style={{ background: 'rgb(98, 255, 0)', color: '#000000' }}>{initials}</div>
+            <div className="sidebar-avatar">{initials}</div>
             <div className="sidebar-user-info">
-              <div className="sidebar-user-name" style={{ color: '#000000' }}>{user?.name}</div>
-              <div className="sidebar-user-role" style={{ color: '#000000' }}>Administrator</div>
+              <div className="sidebar-user-name">{user?.name}</div>
+              <div className="sidebar-user-role">Administrator</div>
             </div>
           </div>
-          <button className="nav-item" onClick={onLogout} style={{ color: '#000000', width: '100%' }}>
-            <span className="nav-icon">↩</span>Sign Out
+          <button className="nav-item" onClick={onLogout} style={{ width: '100%' }}>
+            <span className="nav-icon" aria-hidden="true">↩</span>
+            <span className="nav-label">Sign Out</span>
           </button>
         </div>
       </aside>
 
       <main className="main-content">
-        {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>✓ {success}</div>}
-        {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
+        <FlashBanner success={success} error={error} onDismiss={dismissMsg} />
 
         {/* OVERVIEW */}
         {activePage === 'overview' && (
@@ -258,9 +237,9 @@ export default function AdminDashboard({ user, onLogout }) {
             </div>
             <div className="stats-grid">
               {[
-                { icon: '🩺', label: 'Doctors', value: stats.totalDoctors || doctors.length, bg: 'var(--green-bg)', c: 'var(--green)' },
-                { icon: '👤', label: 'Patients', value: stats.totalPatients || patients.length, bg: 'var(--blue-bg)', c: 'var(--blue)' },
-                { icon: '📅', label: 'Appointments', value: stats.totalAppointments || appointments.length, bg: 'var(--grey-100)', c: 'var(--grey-600)' },
+                { icon: '🩺', label: 'Doctors', value: stats.totalDoctors ?? doctors.length, bg: 'var(--green-bg)', c: 'var(--green)' },
+                { icon: '👤', label: 'Patients', value: stats.totalPatients ?? patients.length, bg: 'var(--blue-bg)', c: 'var(--blue)' },
+                { icon: '📅', label: 'Appointments', value: stats.totalAppointments ?? appointments.length, bg: 'var(--grey-100)', c: 'var(--grey-600)' },
                 { icon: '💬', label: 'Unread Messages', value: unreadCount, bg: unreadCount > 0 ? 'var(--amber-bg)' : 'var(--grey-100)', c: unreadCount > 0 ? 'var(--amber)' : 'var(--grey-600)' },
               ].map((s, i) => (
                 <div className="stat-card" key={i}>

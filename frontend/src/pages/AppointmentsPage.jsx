@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,6 +18,15 @@ export default function AppointmentsPage() {
   });
   const [message, setMessage] = useState({ type: '', text: '' });
   const [errorModal, setErrorModal] = useState({ show: false, message: '' });
+  const messageTimerRef = useRef(null);
+
+  const showBanner = useCallback((type, text) => {
+    if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+    setMessage({ type, text });
+    messageTimerRef.current = setTimeout(() => setMessage({ type: '', text: '' }), 8000);
+  }, []);
+
+  useEffect(() => () => { if (messageTimerRef.current) clearTimeout(messageTimerRef.current); }, []);
 
   const fetchAppointments = async () => {
     try {
@@ -55,11 +64,10 @@ export default function AppointmentsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage({ type: '', text: '' });
     try {
       const response = await axios.post('/api/appointments', formData);
       console.log('✅ Appointment booked:', response.data);
-      setMessage({ type: 'success', text: 'Appointment booked successfully!' });
+      showBanner('success', 'Appointment booked successfully!');
       setFormData({ doctor_id: '', title: '', description: '', appointment_date: '', appointment_time: '' });
       setSelectedDoctor(null);
       setShowForm(false);
@@ -75,10 +83,10 @@ export default function AppointmentsPage() {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
     try {
       await axios.delete(`/api/appointments/${id}`);
-      setMessage({ type: 'success', text: 'Appointment cancelled successfully!' });
+      showBanner('success', 'Appointment cancelled successfully!');
       fetchAppointments();
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to cancel appointment.' });
+      showBanner('error', err.response?.data?.error || 'Failed to cancel appointment.');
     }
   };
 
@@ -120,13 +128,19 @@ export default function AppointmentsPage() {
 
       {/* Message banner */}
       {message.text && (
-        <div style={{
-          padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 13.5, fontWeight: 500,
-          background: message.type === 'success' ? '#d4edda' : '#f8d7da',
-          color: message.type === 'success' ? '#155724' : '#721c24',
-          border: `1px solid ${message.type === 'success' ? '#c3e6cb' : '#f5c6cb'}`,
-        }}>
-          {message.type === 'success' ? '✅' : '❌'} {message.text}
+        <div
+          className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-error'} flash-banner`}
+          role="alert"
+        >
+          <span>{message.type === 'success' ? '✅' : '❌'} {message.text}</span>
+          <button
+            type="button"
+            className="flash-banner-dismiss"
+            onClick={() => setMessage({ type: '', text: '' })}
+            aria-label="Dismiss message"
+          >
+            ×
+          </button>
         </div>
       )}
 

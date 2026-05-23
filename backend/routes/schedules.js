@@ -145,7 +145,7 @@ router.get('/check-date', async (req, res) => {
     const doctor = await db.get_('SELECT name FROM doctors WHERE id = ?', [doctorId]);
     if (doctor) {
       const appointments = await db.all_(
-        'SELECT appointment_time FROM appointments WHERE doctor_name = ? AND appointment_date = ? AND status != "cancelled"',
+        "SELECT appointment_time FROM appointments WHERE doctor_name = ? AND appointment_date = ? AND status != 'cancelled'",
         [doctor.name, date]
       );
 

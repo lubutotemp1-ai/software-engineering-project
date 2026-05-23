@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useSidebarOpen } from '../hooks/useSidebarOpen';
+import SidebarToggle from '../components/SidebarToggle';
+import FlashBanner from '../components/FlashBanner';
+import { useFlashMessage } from '../utils/flashMessage';
 
 // ── Shared helpers ────────────────────────────────────────────────
 const ROLE_COLORS = { patient: '#2563EB', doctor: '#10B981', admin: '#F59E0B' };
@@ -84,11 +88,13 @@ function ScheduleCalendar({ blockedDates, onToggleBlock }) {
 // ── Main Component ────────────────────────────────────────────────
 export default function DoctorDashboard({ onLogout, user }) {
   const [appointments, setAppointments]     = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen, closeOnMobile } = useSidebarOpen();
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [activePage, setActivePage]         = useState('overview');
   const [loading, setLoading]               = useState(true);
   const [success, setSuccess]               = useState('');
+  const [flashError, setFlashError]         = useState('');
+  const { show: showSuccessMsg, dismiss: dismissFlash } = useFlashMessage(setSuccess, setFlashError);
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showMedModal, setShowMedModal]     = useState(false);
   const [recordForm, setRecordForm] = useState({
@@ -228,7 +234,6 @@ export default function DoctorDashboard({ onLogout, user }) {
     }
   };
 
-  const showSuccessMsg = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
   const updateStatus   = async (id, status) => { await axios.put(`/api/doctor/appointments/${id}`, { status }); showSuccessMsg(`Marked as ${status}.`); fetchAppointments(); };
 
   const viewPatientRecords = async (patientId) => {
@@ -309,31 +314,7 @@ export default function DoctorDashboard({ onLogout, user }) {
 
   return (
     <div className="app-layout">
-      <button 
-        className="sidebar-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Toggle sidebar"
-        style={{
-          position: 'fixed',
-          top: 20,
-          left: 20,
-          zIndex: 1001,
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <svg viewBox="-0.5 -0.5 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Sidebar-Collapse--Streamline-Iconoir" height="24" width="24">
-          <desc>Sidebar Collapse Streamline Icon: https://streamlinehq.com</desc>
-          <path d="M12.7769375 14.284625H2.2230625c-0.8326875 0 -1.5076875 -0.675 -1.5076875 -1.5076875l0 -10.553875c0 -0.8326875 0.675 -1.5076875 1.5076875 -1.5076875h10.553875c0.8326875 0 1.5076875 0.675 1.5076875 1.5076875v10.553875c0 0.8326875 -0.675 1.5076875 -1.5076875 1.5076875Z" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-          <path d="M3.9192500000000003 5.9923125 2.6 7.5l1.3192499999999998 1.5076875" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-          <path d="M5.615375 14.284625V0.7153750000000001" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"></path>
-        </svg>
-      </button>
+      <SidebarToggle isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)} />
       {isOpen && (
         <div 
           className="sidebar-overlay"
@@ -378,10 +359,11 @@ export default function DoctorDashboard({ onLogout, user }) {
           {navItems.map(item => (
             <button key={item.id}
               className={`nav-item ${activePage === item.id || (activePage === 'patientRecords' && item.id === 'appointments') ? 'active' : ''}`}
-              onClick={() => setActivePage(item.id)}
+              onClick={() => { setActivePage(item.id); closeOnMobile(); }}
               title={item.label}
               aria-label={item.label}>
-              <span className="nav-icon">{item.icon}</span>{item.label}
+              <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
               {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
             </button>
           ))}
@@ -394,14 +376,15 @@ export default function DoctorDashboard({ onLogout, user }) {
               <div className="sidebar-user-role">Doctor</div>
             </div>
           </div>
-          <button className="nav-item" onClick={onLogout} style={{ color: '#000000', width: '100%' }}>
-            <span className="nav-icon">↩</span>Sign Out
+          <button className="nav-item" onClick={onLogout} style={{ width: '100%' }}>
+            <span className="nav-icon" aria-hidden="true">↩</span>
+            <span className="nav-label">Sign Out</span>
           </button>
         </div>
       </aside>
 
       <main className="main-content">
-        {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>✓ {success}</div>}
+        <FlashBanner success={success} error={flashError} onDismiss={dismissFlash} />
 
         {/* ── OVERVIEW ── */}
         {activePage === 'overview' && (
