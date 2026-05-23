@@ -15,6 +15,7 @@ const staticOrigins = [
   'https://software-engineering-project-sand.vercel.app',
   'https://medi-point.netlify.app',
   'https://www.medi-point.netlify.app',
+  'https://software-engineering-project-epcl.onrender.com',
 ];
 
 const extraOrigins = (process.env.ALLOWED_ORIGINS || '')
