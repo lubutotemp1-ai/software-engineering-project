@@ -5,7 +5,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-const allowedOrigins = [FRONTEND_URL, 'http://localhost:3000', 'https://health-made-easy.netlify.app', 'https://software-engineering-project-sand.vercel.app'];
+const allowedOrigins = [FRONTEND_URL, 'http://localhost:3000', 'https://health-made-easy.netlify.app', 'https://software-engineering-project-sand.vercel.app', 'https://medi-point.netlify.app'];
 
 app.use(cors({
   origin: (origin, callback) => {
