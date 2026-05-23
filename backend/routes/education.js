@@ -20,17 +20,28 @@ router.post('/ask', async (req, res) => {
   if (!question) return res.status(400).json({ error: 'Question is required.' });
 
   try {
+    console.log('Education request from user:', req.user.id, 'role:', req.user.role);
+
     if (req.user.role === 'patient') {
-      const usage = await getUsageStatus(req.user.id);
-      if (!usage.canUse) {
-        return res.status(402).json({
-          error: `Monthly AI limit reached (${usage.used}/${usage.limit}). Upgrade your plan for more uses.`,
-          usage,
-        });
+      console.log('Checking usage status for patient:', req.user.id);
+      try {
+        const usage = await getUsageStatus(req.user.id);
+        console.log('Usage status:', usage);
+        if (!usage.canUse) {
+          return res.status(402).json({
+            error: `Monthly AI limit reached (${usage.used}/${usage.limit}). Upgrade your plan for more uses.`,
+            usage,
+          });
+        }
+      } catch (usageErr) {
+        console.error('Error checking usage status:', usageErr);
+        // Continue without usage check if table doesn't exist yet
+        console.log('Continuing without usage check (table may not exist)');
       }
     }
 
     if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not configured');
       return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to the backend .env file.' });
     }
 
@@ -54,7 +65,14 @@ Question: ${question}`,
     const answerText = getModelText(response);
 
     if (req.user.role === 'patient') {
-      await consumeAiUse(req.user.id);
+      console.log('Consuming AI use for patient:', req.user.id);
+      try {
+        await consumeAiUse(req.user.id);
+        console.log('AI use consumed successfully');
+      } catch (err) {
+        console.error('Error consuming AI use:', err);
+        // Don't fail the request if usage tracking fails
+      }
     }
 
     res.json({ answer: answerText });
@@ -71,6 +89,9 @@ Question: ${question}`,
     const errMessage = err.response?.data?.error || err.message || 'Failed to get AI response.';
     if (errMessage.toLowerCase().includes('api key')) {
       return res.status(500).json({ error: 'Invalid GEMINI_API_KEY. Please check your backend .env file.' });
+    }
+    if (errMessage.toLowerCase().includes('quota') || errMessage.toLowerCase().includes('limit')) {
+      return res.status(429).json({ error: 'API quota exceeded. Please try again later.' });
     }
     res.status(500).json({ error: errMessage });
   }

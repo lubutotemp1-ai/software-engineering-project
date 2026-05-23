@@ -27,12 +27,20 @@ router.post("/check", async (req, res) => {
     }
 
     if (req.user.role === "patient") {
-      const usage = await getUsageStatus(req.user.id);
-      if (!usage.canUse) {
-        return res.status(402).json({
-          error: `Monthly AI limit reached (${usage.used}/${usage.limit}). Upgrade your plan for more uses.`,
-          usage,
-        });
+      console.log('Checking usage status for patient:', req.user.id);
+      try {
+        const usage = await getUsageStatus(req.user.id);
+        console.log('Usage status:', usage);
+        if (!usage.canUse) {
+          return res.status(402).json({
+            error: `Monthly AI limit reached (${usage.used}/${usage.limit}). Upgrade your plan for more uses.`,
+            usage,
+          });
+        }
+      } catch (usageErr) {
+        console.error('Error checking usage status:', usageErr);
+        // Continue without usage check if table doesn't exist yet
+        console.log('Continuing without usage check (table may not exist)');
       }
     }
 
