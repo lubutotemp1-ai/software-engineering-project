@@ -4,6 +4,15 @@ const db = require('../db/database');
 const authMiddleware = require('../middleware/auth');
 const { consumeAiUse } = require('../utils/aiUsage');
 
+function getModelText(response) {
+  if (!response) return '';
+  if (typeof response.response?.text === 'function') return response.response.text();
+  if (typeof response.text === 'function') return response.text();
+  if (typeof response.output_text === 'string') return response.output_text;
+  if (typeof response?.output?.[0]?.content?.[0]?.text === 'string') return response.output[0].content[0].text;
+  return '';
+}
+
 router.use(authMiddleware);
 
 // POST /api/diagnosis/check - Get AI diagnosis based on symptoms
@@ -58,7 +67,7 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
       contents: prompt,
     });
 
-    const diagnosisText = response.response.text();
+    const diagnosisText = getModelText(response);
 
     // Save to database
     const result = await db.run_(
@@ -67,7 +76,17 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
       [req.user.id, req.user.name, symptoms, duration || null, severity || null, diagnosisText]
     );
 
-    const savedDiagnosis = await db.get_('SELECT * FROM ai_diagnoses WHERE id = ?', [result.lastInsertRowid]);
+    const insertedId = result.lastInsertRowid || result.rows?.[0]?.id;
+    let savedDiagnosis;
+
+    if (insertedId) {
+      savedDiagnosis = await db.get_('SELECT * FROM ai_diagnoses WHERE id = ?', [insertedId]);
+    } else {
+      savedDiagnosis = await db.get_(
+        'SELECT * FROM ai_diagnoses WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1',
+        [req.user.id]
+      );
+    }
 
     res.json({
       diagnosis: savedDiagnosis,

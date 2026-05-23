@@ -46,6 +46,25 @@ async function ensureAiDiagnosesTable() {
       FOREIGN KEY (patient_id) REFERENCES users(id)
     )
   `);
+
+  // If the table existed already without the id column, ensure it is added.
+  await db.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'ai_diagnoses' AND column_name = 'id'
+      ) THEN
+        ALTER TABLE ai_diagnoses ADD COLUMN id SERIAL PRIMARY KEY;
+      END IF;
+    END
+    $$;
+  `);
+
+  await db.query('ALTER TABLE ai_diagnoses ADD COLUMN IF NOT EXISTS sent_to_doctor BOOLEAN DEFAULT FALSE');
+  await db.query('ALTER TABLE ai_diagnoses ADD COLUMN IF NOT EXISTS doctor_id INTEGER');
+  await db.query('ALTER TABLE ai_diagnoses ADD COLUMN IF NOT EXISTS sent_to_doctor_name TEXT');
+  await db.query('ALTER TABLE ai_diagnoses ADD COLUMN IF NOT EXISTS appointment_id INTEGER');
 }
 
 async function ensureRuntimeSchema() {

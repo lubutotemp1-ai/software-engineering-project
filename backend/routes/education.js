@@ -3,6 +3,15 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { consumeAiUse } = require('../utils/aiUsage');
 
+function getModelText(response) {
+  if (!response) return '';
+  if (typeof response.response?.text === 'function') return response.response.text();
+  if (typeof response.text === 'function') return response.text();
+  if (typeof response.output_text === 'string') return response.output_text;
+  if (typeof response?.output?.[0]?.content?.[0]?.text === 'string') return response.output[0].content[0].text;
+  return '';
+}
+
 router.use(authMiddleware);
 
 // POST /api/education/ask
@@ -38,14 +47,16 @@ remind the user to consult a doctor.
 Question: ${question}`,
     });
 
-    res.json({ answer: response.response.text() });
+    const answerText = getModelText(response);
+    res.json({ answer: answerText });
 
   } catch (err) {
-    console.error('Gemini error:', err.message);
-    if (err.message.includes('API key')) {
+    console.error('Gemini error:', err.response?.data || err.message);
+    const errMessage = err.response?.data?.error || err.message || 'Failed to get AI response.';
+    if (errMessage.toLowerCase().includes('api key')) {
       return res.status(500).json({ error: 'Invalid GEMINI_API_KEY. Please check your backend .env file.' });
     }
-    res.status(500).json({ error: err.message || 'Failed to get AI response.' });
+    res.status(500).json({ error: errMessage });
   }
 });
 

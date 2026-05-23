@@ -40,6 +40,7 @@ const db = {
     const result = await pool.query(text, params);
     return {
       lastInsertRowid: result.rows?.[0]?.id ?? null,
+      rows: result.rows,
       changes: result.rowCount,
     };
   },

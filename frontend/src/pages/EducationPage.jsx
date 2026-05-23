@@ -198,7 +198,7 @@ export default function EducationPage() {
     } catch (err) {
       const msg = err.response?.status === 402
         ? (err.response?.data?.error || 'Monthly AI limit reached. Upgrade your plan to continue.')
-        : '⚠️ Could not get a response. Please check the backend and your Gemini API key.';
+        : (err.response?.data?.error || '⚠️ Could not get a response. Please check the backend and your Gemini API key.');
       setMessages(prev => [...prev, { role: 'ai', text: msg }]);
       if (err.response?.status === 402) usageRefreshRef.current?.();
     } finally { setLoading(false); }
