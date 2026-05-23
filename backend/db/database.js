@@ -35,7 +35,8 @@ const db = {
     return result.rows;
   },
   run_: async (sql, params = []) => {
-    const needsReturning = /^\s*INSERT\s+/i.test(sql) && !/\bRETURNING\b/i.test(sql);
+    const skipAutoReturning = /INSERT\s+INTO\s+user_ai_subscriptions\b/i.test(sql);
+    const needsReturning = /^\s*INSERT\s+/i.test(sql) && !/\bRETURNING\b/i.test(sql) && !skipAutoReturning;
     const text = convertPlaceholders(needsReturning ? `${sql} RETURNING id` : sql);
     const result = await pool.query(text, params);
     return {
