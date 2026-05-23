@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import SubscriptionManager from '../components/SubscriptionManager';
 
 export default function RecordsPage() {
   const { user } = useAuth();
@@ -54,10 +55,12 @@ export default function RecordsPage() {
     <div>
       <div className="page-header">
         <h1>📋 Patient Records</h1>
-        <p>Your complete medical profile and history</p>
+        <p>Your complete medical profile, subscription, and history</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, alignItems: 'start' }}>
+      <SubscriptionManager />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, alignItems: 'start', marginTop: 8 }}>
         {/* Profile Card */}
         <div className="card" style={{ textAlign: 'center' }}>
           <div style={{

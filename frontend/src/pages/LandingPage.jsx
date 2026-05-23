@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Brain, 
-  MessageCircle, 
-  Activity, 
-  Shield, 
+import {
+  Calendar,
+  Brain,
+  MessageCircle,
+  Activity,
+  Shield,
   Sparkles,
   ChevronRight,
   ArrowRight,
-  Heart,
   Zap,
-  Star
+  Star,
 } from 'lucide-react';
+import AiPlansSection from '../components/AiPlansSection';
 
 export default function LandingPage({ onGetStarted, onSignIn }) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -246,6 +246,15 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             );
           })}
         </div>
+      </section>
+
+      {/* ── AI Plans / Pricing ── */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '40px 48px 80px', maxWidth: '1200px', margin: '0 auto' }}>
+        <AiPlansSection
+          variant="landing"
+          isAuthenticated={false}
+          onGetStarted={onGetStarted}
+        />
       </section>
 
       {/* ── CTA ── */}

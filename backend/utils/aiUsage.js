@@ -54,6 +54,9 @@ async function getUsageStatus(userId) {
     remaining: Math.max(0, limit - used),
     canUse: used < limit,
     periodStart: row.period_start,
+    priceMonthly: PLANS[plan]?.priceMonthly ?? 0,
+    hasStripeSubscription: Boolean(row.stripe_subscription_id),
+    stripeCustomerId: row.stripe_customer_id || null,
     plans: PLANS,
   };
 }

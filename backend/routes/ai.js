@@ -51,14 +51,45 @@ router.post('/checkout', async (req, res) => {
         quantity: 1,
       }],
       metadata: { userId: String(req.user.id), plan },
-      success_url: `${frontend}/?ai_subscription=success&plan=${plan}`,
-      cancel_url: `${frontend}/?ai_subscription=cancelled`,
+      success_url: `${frontend}/?ai_subscription=success&plan=${plan}&page=records`,
+      cancel_url: `${frontend}/?ai_subscription=cancelled&page=records`,
     });
 
     res.json({ url: session.url });
   } catch (err) {
     console.error('Stripe checkout error:', err.message);
     res.status(500).json({ error: 'Could not start checkout.' });
+  }
+});
+
+router.post('/billing-portal', async (req, res) => {
+  if (req.user.role !== 'patient') {
+    return res.status(403).json({ error: 'Only patients can manage billing.' });
+  }
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Payments are not configured yet.' });
+  }
+  try {
+    const db = require('../db/database');
+    const row = await db.get_(
+      'SELECT stripe_customer_id FROM user_ai_subscriptions WHERE user_id = ?',
+      [req.user.id]
+    );
+    if (!row?.stripe_customer_id) {
+      return res.status(400).json({
+        error: 'No billing account found. Subscribe to a paid plan first, then you can manage payment here.',
+      });
+    }
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const frontend = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const session = await stripe.billingPortal.sessions.create({
+      customer: row.stripe_customer_id,
+      return_url: `${frontend}/?ai_subscription=return&page=records`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Billing portal error:', err.message);
+    res.status(500).json({ error: 'Could not open billing portal.' });
   }
 });
 

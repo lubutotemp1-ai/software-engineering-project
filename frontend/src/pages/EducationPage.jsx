@@ -248,7 +248,7 @@ export default function EducationPage() {
         </div>
       </div>
 
-      <AiUsagePanel refreshRef={usageRefreshRef} />
+      <AiUsagePanel refreshRef={usageRefreshRef} defaultShowPlans />
 
       <div style={{ display: 'grid', gridTemplateColumns: showHistory ? '1fr 300px' : '1fr', gap: 16 }}>
         {/* ── Main Chat ── */}

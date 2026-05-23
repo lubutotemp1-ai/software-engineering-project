@@ -36,6 +36,19 @@ function AppContent() {
   }, [authView]);
 
   React.useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const page = params.get('page');
+    if (params.get('ai_subscription') === 'success' || page === 'records') {
+      setActivePage('records');
+    }
+    if (params.has('ai_subscription') || params.has('page')) {
+      const clean = window.location.pathname + (window.location.hash || '');
+      window.history.replaceState({}, '', clean);
+    }
+  }, [user]);
+
+  React.useEffect(() => {
     // Push history state when navigating
     if (authView === 'login') {
       window.history.pushState({ view: 'login' }, 'Login');

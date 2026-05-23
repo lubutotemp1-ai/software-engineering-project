@@ -201,7 +201,7 @@ export default function DiagnosisPage() {
         <p>Get a preliminary symptom assessment powered by Gemini AI</p>
       </div>
 
-      <AiUsagePanel refreshRef={usageRefreshRef} />
+      <AiUsagePanel refreshRef={usageRefreshRef} defaultShowPlans />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid #e8e8e8' }}>
