@@ -28,9 +28,30 @@ async function ensureSubscriptionTable() {
   `);
 }
 
+async function ensureAiDiagnosesTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS ai_diagnoses (
+      id SERIAL PRIMARY KEY,
+      patient_id INTEGER NOT NULL,
+      patient_name TEXT NOT NULL,
+      symptoms TEXT NOT NULL,
+      duration TEXT,
+      severity TEXT,
+      diagnosis TEXT NOT NULL,
+      sent_to_doctor BOOLEAN DEFAULT FALSE,
+      doctor_id INTEGER,
+      sent_to_doctor_name TEXT,
+      appointment_id INTEGER,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      FOREIGN KEY (patient_id) REFERENCES users(id)
+    )
+  `);
+}
+
 async function ensureRuntimeSchema() {
   await dropChatFks();
   await ensureSubscriptionTable();
+  await ensureAiDiagnosesTable();
 }
 
-module.exports = { ensureRuntimeSchema, ensureSubscriptionTable, dropChatFks };
+module.exports = { ensureRuntimeSchema, ensureSubscriptionTable, dropChatFks, ensureAiDiagnosesTable };

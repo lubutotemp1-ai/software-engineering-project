@@ -25,6 +25,10 @@ router.post('/check', async (req, res) => {
       }
     }
 
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to the backend .env file.' });
+    }
+
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -59,7 +63,7 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
     // Save to database
     const result = await db.run_(
       `INSERT INTO ai_diagnoses (patient_id, patient_name, symptoms, duration, severity, diagnosis)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
       [req.user.id, req.user.name, symptoms, duration || null, severity || null, diagnosisText]
     );
 

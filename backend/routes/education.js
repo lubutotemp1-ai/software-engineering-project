@@ -21,6 +21,10 @@ router.post('/ask', async (req, res) => {
   }
 
   try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to the backend .env file.' });
+    }
+
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -38,6 +42,9 @@ Question: ${question}`,
 
   } catch (err) {
     console.error('Gemini error:', err.message);
+    if (err.message.includes('API key')) {
+      return res.status(500).json({ error: 'Invalid GEMINI_API_KEY. Please check your backend .env file.' });
+    }
     res.status(500).json({ error: err.message || 'Failed to get AI response.' });
   }
 });
