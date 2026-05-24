@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useSidebarOpen } from '../hooks/useSidebarOpen';
+import API_URL from '../apiConfig';
 import SidebarToggle from '../components/SidebarToggle';
 import FlashBanner from '../components/FlashBanner';
 import MessagingPanel from '../components/MessagingPanel';
@@ -120,10 +121,10 @@ export default function DoctorDashboard({ onLogout, user }) {
     } finally { setLoading(false); }
   };
 
-  const fetchAppointments  = async () => { const r = await axios.get('/api/doctor/appointments'); setAppointments(r.data); };
-  const fetchSchedules     = async () => { const r = await axios.get('/api/schedules/my-schedules'); setBlockedDates(r.data.filter(s => s.is_available === 0)); };
-  const fetchUnread        = async () => { try { const r = await axios.get('/api/chat/unread-count'); setUnreadCount(r.data.count); } catch {} };
-  const fetchDiagnoses     = async () => { try { const r = await axios.get('/api/diagnosis/received'); setDiagnoses(r.data || []); } catch {} };
+  const fetchAppointments  = async () => { const r = await axios.get(`${API_URL}/api/doctor/appointments`); setAppointments(r.data); };
+  const fetchSchedules     = async () => { const r = await axios.get(`${API_URL}/api/schedules/my-schedules`); setBlockedDates(r.data.filter(s => s.is_available === 0)); };
+  const fetchUnread        = async () => { try { const r = await axios.get(`${API_URL}/api/chat/unread-count`); setUnreadCount(r.data.count); } catch {} };
+  const fetchDiagnoses     = async () => { try { const r = await axios.get(`${API_URL}/api/diagnosis/received`); setDiagnoses(r.data || []); } catch {} };
 
   const toggleBlock = async (date, isBlocked) => {
     try {
@@ -139,7 +140,7 @@ export default function DoctorDashboard({ onLogout, user }) {
           `Are you sure you want to block ${new Date(date + 'T00:00:00').toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}?\n\nPatients will not be able to book appointments on this date.`
         );
         if (confirmed) {
-          await axios.post('/api/schedules/block', { dates: [date], reason: blockReason || 'Not available' });
+          await axios.post(`${API_URL}/api/schedules/block`, { dates: [date], reason: blockReason || 'Not available' });
           fetchSchedules();
           showSuccessMsg('Date blocked successfully.');
         }

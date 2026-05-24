@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import API_URL from '../apiConfig';
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
@@ -30,7 +31,7 @@ export default function AppointmentsPage() {
 
   const fetchAppointments = async () => {
     try {
-      const res = await axios.get('/api/appointments');
+      const res = await axios.get(`${API_URL}/api/appointments`);
       setAppointments(res.data || []);
     } catch (err) {
       console.error('Error fetching appointments:', err);
@@ -41,7 +42,7 @@ export default function AppointmentsPage() {
 
   const fetchDoctors = async () => {
     try {
-      const res = await axios.get('/api/doctors');
+      const res = await axios.get(`${API_URL}/api/doctors`);
       setDoctors(res.data || []);
     } catch (err) {
       console.error('Error fetching doctors:', err);
@@ -65,7 +66,7 @@ export default function AppointmentsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/api/appointments', formData);
+      const response = await axios.post(`${API_URL}/api/appointments`, formData);
       console.log('✅ Appointment booked:', response.data);
       showBanner('success', 'Appointment booked successfully!');
       setFormData({ doctor_id: '', title: '', description: '', appointment_date: '', appointment_time: '' });

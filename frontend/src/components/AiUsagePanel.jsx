@@ -4,6 +4,7 @@ import { Sparkles, Zap, AlertCircle } from 'lucide-react';
 import AiPlansSection from './AiPlansSection';
 import { PAID_PLAN_IDS } from '../constants/aiPlans';
 import { startAiCheckout, checkoutErrorMessage } from '../utils/aiCheckout';
+import API_URL from '../apiConfig';
 
 /**
  * Usage banner + plans for AI Diagnosis & Education pages.
@@ -16,7 +17,7 @@ export default function AiUsagePanel({ onUsageChange, refreshRef, defaultShowPla
 
   const loadUsage = useCallback(async () => {
     try {
-      const res = await axios.get('/api/ai/usage');
+      const res = await axios.get(`${API_URL}/api/ai/usage`);
       setUsage(res.data);
       onUsageChange?.(res.data);
       const isFree = !res.data.plan || res.data.plan === 'free';

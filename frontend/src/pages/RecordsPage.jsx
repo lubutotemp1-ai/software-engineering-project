@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import API_URL from '../apiConfig';
 import SubscriptionManager from '../components/SubscriptionManager';
 
 export default function RecordsPage() {
@@ -15,10 +16,10 @@ export default function RecordsPage() {
     const fetchAll = async () => {
       try {
         const [profileRes, apptRes, healthRes, medRes] = await Promise.all([
-          axios.get('/api/auth/me'),
-          axios.get('/api/appointments'),
-          axios.get('/api/health'),
-          axios.get('/api/health/medications'),
+          axios.get(`${API_URL}/api/auth/me`),
+          axios.get(`${API_URL}/api/appointments`),
+          axios.get(`${API_URL}/api/health`),
+          axios.get(`${API_URL}/api/health/medications`),
         ]);
         setProfile(profileRes.data);
         setAppointments(apptRes.data);

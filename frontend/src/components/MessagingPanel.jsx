@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import API_URL from '../apiConfig';
 import { Send, Trash2, Search, Plus, MessageCircle, X } from 'lucide-react';
 
 const ROLE_COLORS = { patient: '#2563EB', doctor: '#10B981', admin: '#F59E0B' };
@@ -94,7 +95,7 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
 
   const fetchConversations = async () => {
     try {
-      const res = await axios.get('/api/chat/conversations');
+      const res = await axios.get(`${API_URL}/api/chat/conversations`);
       const seen = new Set();
       const unique = (res.data || []).filter((c) => {
         const key = convoKey(c);
@@ -112,7 +113,7 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
 
   const fetchAvailableUsers = async () => {
     try {
-      const res = await axios.get('/api/chat/users');
+      const res = await axios.get(`${API_URL}/api/chat/users`);
       setAvailableUsers(res.data || []);
     } catch (err) {
       console.error('Error fetching available users:', err.response?.data?.error || err.message);
@@ -122,7 +123,7 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
 
   const fetchMessages = async (otherUserId, otherRole, silent = false) => {
     try {
-      const res = await axios.get(`/api/chat/messages/${otherUserId}?otherRole=${otherRole || ''}`);
+      const res = await axios.get(`${API_URL}/api/chat/messages/${otherUserId}?otherRole=${otherRole || ''}`);
       setMessages(res.data || []);
       if (!silent) fetchConversations();
     } catch (err) {
@@ -167,7 +168,7 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
     const messageToSend = input.trim();
     setInput('');
     try {
-      const res = await axios.post('/api/chat/send', {
+      const res = await axios.post(`${API_URL}/api/chat/send`, {
         receiverId: selected.other_user_id,
         receiverRole: selected.other_user_role,
         message: messageToSend,
@@ -203,7 +204,7 @@ export default function MessagingPanel({ subtitle, initialTarget, onTargetConsum
     if (!window.confirm(`Delete your entire conversation with ${convo.other_user_name}? This cannot be undone.`)) return;
     setDeletingConvo(convoKey(convo));
     try {
-      await axios.delete(`/api/chat/conversation/${convo.other_user_id}?otherRole=${convo.other_user_role}`);
+      await axios.delete(`${API_URL}/api/chat/conversation/${convo.other_user_id}?otherRole=${convo.other_user_role}`);
       if (selected && convoKey(selected) === convoKey(convo)) {
         setSelected(null);
         setMessages([]);

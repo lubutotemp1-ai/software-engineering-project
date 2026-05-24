@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import API_URL from '../apiConfig';
 import { useAuth } from '../context/AuthContext';
 import AiUsagePanel from '../components/AiUsagePanel';
 
@@ -136,12 +137,12 @@ export default function DiagnosisPage() {
 
   useEffect(() => {
     fetchHistory();
-    axios.get('/api/doctors').then(r => setDoctors(r.data)).catch(() => {});
+    axios.get(`${API_URL}/api/doctors`).then(r => setDoctors(r.data)).catch(() => {});
   }, []);
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get('/api/diagnosis/history');
+      const res = await axios.get(`${API_URL}/api/diagnosis/history`);
       setHistory(res.data);
     } catch {}
   };
@@ -152,7 +153,7 @@ export default function DiagnosisPage() {
     setLoading(true);
     setDiagnosis(null);
     try {
-      const res = await axios.post('/api/diagnosis/check', { symptoms, duration, severity });
+      const res = await axios.post(`${API_URL}/api/diagnosis/check`, { symptoms, duration, severity });
       // Support both response shapes
       const diag = res.data.diagnosis || res.data;
       setDiagnosis(diag);
@@ -173,7 +174,7 @@ export default function DiagnosisPage() {
     if (!selectedDoctor || !doc) return;
     setSending(true);
     try {
-      await axios.post(`/api/diagnosis/${doc.id}/send-to-doctor`, { doctorId: selectedDoctor });
+      await axios.post(`${API_URL}/api/diagnosis/${doc.id}/send-to-doctor`, { doctorId: selectedDoctor });
       setSendSuccess('Diagnosis sent to doctor successfully!');
       fetchHistory();
       if (diagnosis?.id === doc.id) setDiagnosis(prev => ({ ...prev, sent_to_doctor: 1 }));
@@ -186,7 +187,7 @@ export default function DiagnosisPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this diagnosis?')) return;
     try {
-      await axios.delete(`/api/diagnosis/${id}`);
+      await axios.delete(`${API_URL}/api/diagnosis/${id}`);
       fetchHistory();
       if (diagnosis?.id === id) setDiagnosis(null);
     } catch {}

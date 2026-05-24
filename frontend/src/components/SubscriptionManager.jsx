@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { CreditCard, Sparkles, ExternalLink, RefreshCw, Zap } from 'lucide-react';
 import AiPlansSection from './AiPlansSection';
+import API_URL from '../apiConfig';
 import { AI_PLANS, PAID_PLAN_IDS } from '../constants/aiPlans';
 import { startAiCheckout, checkoutErrorMessage } from '../utils/aiCheckout';
 
@@ -13,7 +14,7 @@ export default function SubscriptionManager() {
 
   const loadUsage = useCallback(async () => {
     try {
-      const res = await axios.get('/api/ai/usage');
+      const res = await axios.get(`${API_URL}/api/ai/usage`);
       setUsage(res.data);
     } catch (err) {
       setMessage({
@@ -61,7 +62,7 @@ export default function SubscriptionManager() {
   const openBillingPortal = async () => {
     setActionLoading('portal');
     try {
-      const res = await axios.post('/api/ai/billing-portal');
+      const res = await axios.post(`${API_URL}/api/ai/billing-portal`);
       if (res.data?.url) window.location.href = res.data.url;
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Could not open billing portal.' });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_URL from '../apiConfig';
 import { useSidebarOpen } from '../hooks/useSidebarOpen';
 import SidebarToggle from '../components/SidebarToggle';
 import FlashBanner from '../components/FlashBanner';
@@ -47,11 +48,11 @@ export default function AdminDashboard({ user, onLogout }) {
     } finally { setLoading(false); }
   };
 
-  const fetchDoctors = async () => { const r = await axios.get('/api/admin/doctors'); setDoctors(r.data); };
-  const fetchPatients = async () => { const r = await axios.get('/api/admin/patients'); setPatients(r.data); };
-  const fetchAppointments = async () => { const r = await axios.get('/api/admin/appointments'); setAppointments(r.data); };
-  const fetchUnread = async () => { try { const r = await axios.get('/api/chat/unread-count'); setUnreadCount(r.data.count); } catch {} };
-  const fetchStats = async () => { try { const r = await axios.get('/api/admin/stats'); setStats(r.data); } catch (err) { console.error('Error fetching stats:', err); } };
+  const fetchDoctors = async () => { const r = await axios.get(`${API_URL}/api/admin/doctors`); setDoctors(r.data); };
+  const fetchPatients = async () => { const r = await axios.get(`${API_URL}/api/admin/patients`); setPatients(r.data); };
+  const fetchAppointments = async () => { const r = await axios.get(`${API_URL}/api/admin/appointments`); setAppointments(r.data); };
+  const fetchUnread = async () => { try { const r = await axios.get(`${API_URL}/api/chat/unread-count`); setUnreadCount(r.data.count); } catch {} };
+  const fetchStats = async () => { try { const r = await axios.get(`${API_URL}/api/admin/stats`); setStats(r.data); } catch (err) { console.error('Error fetching stats:', err); } };
 
   const { show: showMsg, dismiss: dismissMsg } = useFlashMessage(setSuccess, setError);
 
@@ -60,10 +61,10 @@ export default function AdminDashboard({ user, onLogout }) {
     try {
       const phone = doctorForm.phoneNumber ? `${phoneCC}${doctorForm.phoneNumber}` : '';
       if (editDoctor) {
-        await axios.put(`/api/admin/doctors/${editDoctor.id}`, { ...doctorForm, phone });
+        await axios.put(`${API_URL}/api/admin/doctors/${editDoctor.id}`, { ...doctorForm, phone });
         showMsg('Doctor updated.');
       } else {
-        await axios.post('/api/admin/doctors', { ...doctorForm, phone });
+        await axios.post(`${API_URL}/api/admin/doctors`, { ...doctorForm, phone });
         showMsg('Doctor added.');
       }
       setShowAddDoctor(false);
@@ -76,7 +77,7 @@ export default function AdminDashboard({ user, onLogout }) {
 
   const deleteDoctor = async (id) => {
     if (!window.confirm('Remove this doctor?')) return;
-    try { await axios.delete(`/api/admin/doctors/${id}`); showMsg('Doctor removed.'); fetchDoctors(); fetchStats(); } catch { showMsg('Failed.', true); }
+    try { await axios.delete(`${API_URL}/api/admin/doctors/${id}`); showMsg('Doctor removed.'); fetchDoctors(); fetchStats(); } catch { showMsg('Failed.', true); }
   };
 
   const openEdit = (doc) => {

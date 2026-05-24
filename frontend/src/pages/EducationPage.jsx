@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import API_URL from '../apiConfig';
 import AiUsagePanel from '../components/AiUsagePanel';
 
 const SUGGESTED = [
@@ -190,7 +191,7 @@ export default function EducationPage() {
     setInput('');
     setLoading(true);
     try {
-      const res = await axios.post('/api/education/ask', { question: q });
+      const res = await axios.post(`${API_URL}/api/education/ask`, { question: q });
       const answer = res.data.answer;
       setMessages(prev => [...prev, { role: 'ai', text: answer }]);
       saveToHistory(q, answer);

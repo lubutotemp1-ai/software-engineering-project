@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import API_URL from '../apiConfig';
 
 export default function Dashboard({ setActivePage }) {
   const { user } = useAuth();
@@ -15,11 +16,11 @@ export default function Dashboard({ setActivePage }) {
     const fetchData = async () => {
       try {
         const [apptRes, healthRes, latestRes, medsRes, tipsRes] = await Promise.all([
-          axios.get('/api/appointments'),
-          axios.get('/api/health'),
-          axios.get('/api/health/latest'),
-          axios.get('/api/health/medications'),
-          axios.get('/api/education/tips'),
+          axios.get(`${API_URL}/api/appointments`),
+          axios.get(`${API_URL}/api/health`),
+          axios.get(`${API_URL}/api/health/latest`),
+          axios.get(`${API_URL}/api/health/medications`),
+          axios.get(`${API_URL}/api/education/tips`),
         ]);
         const allAppts = apptRes.data;
         const today = new Date().toISOString().split('T')[0];

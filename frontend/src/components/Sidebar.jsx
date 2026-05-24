@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useSidebarOpen } from '../hooks/useSidebarOpen';
+import API_URL from '../apiConfig';
 import SidebarToggle from './SidebarToggle';
 import {
   LayoutDashboard,
@@ -23,7 +24,7 @@ export default function Sidebar({ activePage, setActivePage }) {
   useEffect(() => {
     const fetchUnread = async () => {
       try {
-        const res = await axios.get('/api/chat/unread-count');
+        const res = await axios.get(`${API_URL}/api/chat/unread-count`);
         setUnreadCount(res.data.count);
       } catch {}
     };
