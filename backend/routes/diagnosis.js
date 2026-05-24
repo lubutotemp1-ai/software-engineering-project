@@ -4,17 +4,6 @@ const db = require("../db/database");
 const authMiddleware = require("../middleware/auth");
 const { consumeAiUse, getUsageStatus } = require("../utils/aiUsage");
 
-function getModelText(response) {
-  if (!response) return "";
-  if (typeof response.response?.text === "function")
-    return response.response.text();
-  if (typeof response.text === "function") return response.text();
-  if (typeof response.output_text === "string") return response.output_text;
-  if (typeof response?.output?.[0]?.content?.[0]?.text === "string")
-    return response.output[0].content[0].text;
-  return "";
-}
-
 router.use(authMiddleware);
 
 // POST /api/diagnosis/check - Get AI diagnosis based on symptoms
@@ -44,19 +33,18 @@ router.post("/check", async (req, res) => {
       }
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.OPENROUTER_API_KEY) {
       return res
         .status(500)
         .json({
           error:
-            "GEMINI_API_KEY is not configured on the server. Please add it to the backend .env file.",
+            "OPENROUTER_API_KEY is not configured on the server. Please add it to the backend .env file.",
         });
     }
 
-    console.log("Initializing GoogleGenAI for diagnosis...");
-    const { GoogleGenAI } = require("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    console.log("GoogleGenAI initialized successfully");
+    console.log("Initializing OpenRouter for diagnosis...");
+    const axios = require("axios");
+    console.log("OpenRouter initialized successfully");
 
     const prompt = `You are a medical AI assistant in a hospital portal helping patients with preliminary health assessments.
 A patient has described their symptoms. Provide a clear, empathetic, plain-text response (no markdown, no bullet symbols, just clean paragraphs).
@@ -79,14 +67,29 @@ Self-Care Tips: Provide appropriate general advice for managing symptoms at home
 
 Disclaimer: Remind the patient that this is NOT a substitute for professional medical advice and they should consult a qualified healthcare provider for a proper diagnosis and treatment.`;
 
-    console.log("Sending symptoms to Gemini model...");
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      contents: prompt,
-    });
-    console.log("Received response from Gemini model");
+    console.log("Sending symptoms to OpenRouter model...");
+    const response = await axios.post(
+      "https://openrouter.io/api/v1/chat/completions",
+      {
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": process.env.FRONTEND_URL || "http://localhost:3000",
+          "X-Title": "Health Easy Portal",
+        },
+      }
+    );
+    console.log("Received response from OpenRouter model");
 
-    const diagnosisText = getModelText(response);
+    const diagnosisText = response.data.choices[0].message.content;
 
     // Save to database
     const result = await db.run_(
@@ -134,9 +137,19 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
       console.error("Response status:", err.response.status);
       console.error("Response data:", err.response.data);
     }
-    res
-      .status(500)
-      .json({ error: err.message || "Failed to get AI diagnosis." });
+    const errMessage = err.response?.data?.error?.message || err.response?.data?.error || err.message || "Failed to get AI diagnosis.";
+    if (errMessage.toLowerCase().includes("api key")) {
+      return res
+        .status(500)
+        .json({
+          error:
+            "Invalid OPENROUTER_API_KEY. Please check your backend .env file.",
+        });
+    }
+    if (errMessage.toLowerCase().includes("quota") || errMessage.toLowerCase().includes("limit") || errMessage.toLowerCase().includes("429") || errMessage.toLowerCase().includes("too many requests")) {
+      return res.status(429).json({ error: "API quota exceeded. Please try again in a few minutes." });
+    }
+    res.status(500).json({ error: errMessage });
   }
 });
 

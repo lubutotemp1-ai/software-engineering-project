@@ -102,8 +102,8 @@ async function startServer() {
     if (err.message.includes('ENOTFOUND') || err.message.includes('getaddrinfo')) {
       console.error('❌ Database connection failed. Please check your DATABASE_URL in .env');
     }
-    if (!process.env.GEMINI_API_KEY) {
-      console.error('❌ GEMINI_API_KEY is not set. AI features will not work.');
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('❌ OPENROUTER_API_KEY is not set. AI features will not work.');
     }
     if (!process.env.STRIPE_SECRET_KEY) {
       console.error('❌ STRIPE_SECRET_KEY is not set. AI checkout will not work.');

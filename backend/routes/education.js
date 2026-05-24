@@ -3,15 +3,6 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { consumeAiUse, getUsageStatus } = require('../utils/aiUsage');
 
-function getModelText(response) {
-  if (!response) return '';
-  if (typeof response.response?.text === 'function') return response.response.text();
-  if (typeof response.text === 'function') return response.text();
-  if (typeof response.output_text === 'string') return response.output_text;
-  if (typeof response?.output?.[0]?.content?.[0]?.text === 'string') return response.output[0].content[0].text;
-  return '';
-}
-
 router.use(authMiddleware);
 
 // POST /api/education/ask
@@ -40,29 +31,43 @@ router.post('/ask', async (req, res) => {
       }
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY is not configured');
-      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to the backend .env file.' });
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('OPENROUTER_API_KEY is not configured');
+      return res.status(500).json({ error: 'OPENROUTER_API_KEY is not configured on the server. Please add it to the backend .env file.' });
     }
 
-    console.log('Initializing GoogleGenAI...');
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    console.log('GoogleGenAI initialized successfully');
+    console.log('Initializing OpenRouter...');
+    const axios = require('axios');
+    console.log('OpenRouter initialized successfully');
 
-    console.log('Sending question to Gemini model...');
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      contents: `You are a friendly health education assistant for a hospital portal.
+    console.log('Sending question to OpenRouter model...');
+    const response = await axios.post(
+      'https://openrouter.io/api/v1/chat/completions',
+      {
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'user',
+            content: `You are a friendly health education assistant for a hospital portal.
 Answer the following health question in simple, easy-to-understand language.
 Keep the answer clear, accurate, and helpful. If it is a serious medical concern,
 remind the user to consult a doctor.
 
 Question: ${question}`,
-    });
-    console.log('Received response from Gemini model');
+          },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
+          'X-Title': 'Health Easy Portal',
+        },
+      }
+    );
+    console.log('Received response from OpenRouter model');
 
-    const answerText = getModelText(response);
+    const answerText = response.data.choices[0].message.content;
 
     if (req.user.role === 'patient') {
       console.log('Consuming AI use for patient:', req.user.id);
@@ -86,12 +91,12 @@ Question: ${question}`,
       console.error('Response status:', err.response.status);
       console.error('Response data:', err.response.data);
     }
-    const errMessage = err.response?.data?.error || err.message || 'Failed to get AI response.';
+    const errMessage = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to get AI response.';
     if (errMessage.toLowerCase().includes('api key')) {
-      return res.status(500).json({ error: 'Invalid GEMINI_API_KEY. Please check your backend .env file.' });
+      return res.status(500).json({ error: 'Invalid OPENROUTER_API_KEY. Please check your backend .env file.' });
     }
-    if (errMessage.toLowerCase().includes('quota') || errMessage.toLowerCase().includes('limit')) {
-      return res.status(429).json({ error: 'API quota exceeded. Please try again later.' });
+    if (errMessage.toLowerCase().includes('quota') || errMessage.toLowerCase().includes('limit') || errMessage.toLowerCase().includes('429') || errMessage.toLowerCase().includes('too many requests')) {
+      return res.status(429).json({ error: 'API quota exceeded. Please try again in a few minutes.' });
     }
     res.status(500).json({ error: errMessage });
   }
