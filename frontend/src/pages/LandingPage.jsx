@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Calendar,
-  Brain,
-  MessageCircle,
-  Activity,
-  Shield,
+import { 
+  Calendar, 
+  Brain, 
+  MessageCircle, 
+  Activity, 
+  Shield, 
   Sparkles,
   ChevronRight,
   ArrowRight,
+  Heart,
   Zap,
-  Star,
+  Star
 } from 'lucide-react';
-import AiPlansSection from '../components/AiPlansSection';
 
 export default function LandingPage({ onGetStarted, onSignIn }) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [scrollY, setScrollY] = useState(0);
+  const [plans, setPlans] = useState([
+    { id: 1, name: 'Free', price: 0, diagnosis: 7, education: 10 },
+    { id: 2, name: 'Pro', price: 25, diagnosis: 50, education: 100 },
+    { id: 3, name: 'Plus', price: 75, diagnosis: 150, education: 300 },
+    { id: 4, name: 'Max', price: 120, diagnosis: 500, education: 1000 },
+  ]);
 
   useEffect(() => {
     const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
@@ -27,6 +33,14 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  const handlePlanPurchase = (planId) => {
+    if (planId === 1) {
+      onGetStarted();
+    } else {
+      onSignIn();
+    }
+  };
 
   const features = [
     { icon: Calendar,     title: 'Smart Appointment Booking', description: 'Book visits instantly with real-time doctor availability',          color: '#4A90E2', delay: 0   },
@@ -146,7 +160,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             margin: '0 auto 48px', lineHeight: 1.6, fontWeight: 400
           }}>
             Connect with healthcare professionals, track your health, and get AI-powered 
-            insights all in one secure platform.
+            insights—all in one secure platform.
           </p>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -248,13 +262,130 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
         </div>
       </section>
 
-      {/* ── AI Plans / Pricing ── */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '40px 48px 80px', maxWidth: '1200px', margin: '0 auto' }}>
-        <AiPlansSection
-          variant="landing"
-          isAuthenticated={false}
-          onGetStarted={onGetStarted}
-        />
+      {/* ── Pricing Plans ── */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '80px 48px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: '80px', animation: 'fadeInUp 1s cubic-bezier(0.4,0,0.2,1)', animationFillMode: 'backwards' }}>
+          <h2 style={{ fontSize: '48px', fontWeight: 700, color: 'white', marginBottom: '16px', letterSpacing: '-0.02em' }}>Simple, Transparent Pricing</h2>
+          <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.8)', maxWidth: '600px', margin: '0 auto' }}>
+            Choose the perfect plan for your healthcare needs
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Free Plan */}
+          <div style={{
+            background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.2)', borderRadius: '24px',
+            padding: '32px 24px', transition: 'all 0.3s ease', cursor: 'default',
+            animation: 'fadeInUp 1s cubic-bezier(0.4,0,0.2,1)', animationFillMode: 'backwards', animationDelay: '0.1s'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Free Plan</div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$0<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
+            <div style={{ space: '16px', marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 7 AI Diagnosis uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 10 Health Education uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Basic health tracking</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Limited appointments</div>
+            </div>
+            <button onClick={() => handlePlanPurchase(1)} style={{
+              width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.5)',
+              padding: '12px 24px', borderRadius: '50px', color: 'white', fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'Montserrat, sans-serif', transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+              Get Started
+            </button>
+          </div>
+
+          {/* Pro Plan */}
+          <div style={{
+            background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(20px)',
+            border: '2px solid rgba(59, 130, 246, 0.6)', borderRadius: '24px',
+            padding: '32px 24px', transition: 'all 0.3s ease', cursor: 'default',
+            animation: 'fadeInUp 1s cubic-bezier(0.4,0,0.2,1)', animationFillMode: 'backwards', animationDelay: '0.2s',
+            position: 'relative', transform: 'scale(1.05)'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'scale(1.05) translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 50px rgba(59, 130, 246, 0.3)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = 'none'; }}>
+            <div style={{ position: 'absolute', top: '-12px', left: '20px', background: 'linear-gradient(90deg, #3B82F6, #60A5FA)', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MOST POPULAR</div>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px', marginTop: '8px' }}>Pro Plan</div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$25<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
+            <div style={{ space: '16px', marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 50 AI Diagnosis uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 100 Health Education uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Full health tracking</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Unlimited appointments</div>
+            </div>
+            <button onClick={() => handlePlanPurchase(2)} style={{
+              width: '100%', background: 'linear-gradient(90deg, #3B82F6, #60A5FA)', border: 'none',
+              padding: '12px 24px', borderRadius: '50px', color: 'white', fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'Montserrat, sans-serif', transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
+              Upgrade Now
+            </button>
+          </div>
+
+          {/* Plus Plan */}
+          <div style={{
+            background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.2)', borderRadius: '24px',
+            padding: '32px 24px', transition: 'all 0.3s ease', cursor: 'default',
+            animation: 'fadeInUp 1s cubic-bezier(0.4,0,0.2,1)', animationFillMode: 'backwards', animationDelay: '0.3s'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Plus Plan</div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$75<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
+            <div style={{ space: '16px', marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 150 AI Diagnosis uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 300 Health Education uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Priority support</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Advanced analytics</div>
+            </div>
+            <button onClick={() => handlePlanPurchase(3)} style={{
+              width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.5)',
+              padding: '12px 24px', borderRadius: '50px', color: 'white', fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'Montserrat, sans-serif', transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+              Upgrade Now
+            </button>
+          </div>
+
+          {/* Max Plan */}
+          <div style={{
+            background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.2)', borderRadius: '24px',
+            padding: '32px 24px', transition: 'all 0.3s ease', cursor: 'default',
+            animation: 'fadeInUp 1s cubic-bezier(0.4,0,0.2,1)', animationFillMode: 'backwards', animationDelay: '0.4s'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Max Plan</div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$120<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
+            <div style={{ space: '16px', marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 500 AI Diagnosis uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 1000 Health Education uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 24/7 Premium support</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Dedicated account manager</div>
+            </div>
+            <button onClick={() => handlePlanPurchase(4)} style={{
+              width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.5)',
+              padding: '12px 24px', borderRadius: '50px', color: 'white', fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'Montserrat, sans-serif', transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+              Upgrade Now
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* ── CTA ── */}
@@ -271,10 +402,10 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             Ready to Transform Your Health?
           </h2>
           <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)', maxWidth: '600px', margin: '0 auto 40px' }}>
-            Join the family to have a better healthcare experience through our platform.
+            Join thousands of users already experiencing better healthcare through our platform.
           </p>
 
-          {/* Register */}
+          {/* Get Started Free → Register */}
           <button onClick={onGetStarted} style={{
             background: 'white', color: '#667eea', border: 'none',
             padding: '20px 50px', borderRadius: '50px', fontSize: '18px', fontWeight: 700,
@@ -287,7 +418,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             Get Started Free <ArrowRight size={22} />
           </button>
 
-          {/* Login */}
+          {/* Already have an account → Login */}
           <div style={{ marginTop: '20px' }}>
             <button onClick={onSignIn} style={{
               background: 'none', border: 'none', color: 'rgba(255,255,255,0.75)',

@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import API_URL from '../apiConfig';
-import AiUsagePanel from '../components/AiUsagePanel';
 
 const SUGGESTED = [
   'What are the symptoms of diabetes?',
@@ -162,14 +160,15 @@ export default function EducationPage() {
   const [history, setHistory]       = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
+  const [subscription, setSubscription] = useState(null);
   const chatEndRef = useRef(null);
-  const usageRefreshRef = useRef(null);
 
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
       setHistory(saved);
     } catch {}
+    axios.get('/api/payments/subscription').then(r => setSubscription(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -191,17 +190,12 @@ export default function EducationPage() {
     setInput('');
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/education/ask`, { question: q });
+      const res = await axios.post('/api/education/ask', { question: q });
       const answer = res.data.answer;
       setMessages(prev => [...prev, { role: 'ai', text: answer }]);
       saveToHistory(q, answer);
-      usageRefreshRef.current?.();
-    } catch (err) {
-      const msg = err.response?.status === 402
-        ? (err.response?.data?.error || 'Monthly AI limit reached. Upgrade your plan to continue.')
-        : (err.response?.data?.error || '⚠️ Could not get a response. Please check the backend and your Gemini API key.');
-      setMessages(prev => [...prev, { role: 'ai', text: msg }]);
-      if (err.response?.status === 402) usageRefreshRef.current?.();
+    } catch {
+      setMessages(prev => [...prev, { role: 'ai', text: '⚠️ Could not get a response. Please check the backend and your Gemini API key.' }]);
     } finally { setLoading(false); }
   };
 
@@ -235,9 +229,30 @@ export default function EducationPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-        <div className="page-header" style={{ marginBottom: 0 }}>
-          <h1>Health Education AI</h1>
-          <p>Ask any health question — powered by Google Gemini</p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div className="page-header" style={{ marginBottom: 0 }}>
+            <h1>Health Education AI</h1>
+            <p>Ask any health question — powered by Google Gemini</p>
+          </div>
+          {subscription && (
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '12px',
+              padding: '8px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+              marginTop: '4px'
+            }}>
+              <span style={{ fontSize: '16px' }}>💎</span>
+              <div>
+                <div style={{ fontSize: '11px', color: '#10B981', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Current Plan</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#10B981' }}>{subscription.name}</div>
+              </div>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {activeSession && (
@@ -248,8 +263,6 @@ export default function EducationPage() {
           </button>
         </div>
       </div>
-
-      <AiUsagePanel refreshRef={usageRefreshRef} defaultShowPlans />
 
       <div style={{ display: 'grid', gridTemplateColumns: showHistory ? '1fr 300px' : '1fr', gap: 16 }}>
         {/* ── Main Chat ── */}

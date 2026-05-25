@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import API_URL from '../apiConfig';
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
@@ -9,7 +8,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  axios.defaults.baseURL = API_URL;
+  // Set base URL based on environment
+  const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+  axios.defaults.baseURL = baseURL;
 
   useEffect(() => {
     const token = localStorage.getItem('token');

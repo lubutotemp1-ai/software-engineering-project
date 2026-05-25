@@ -5,9 +5,6 @@ import Sidebar from './components/Sidebar';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import ChangePasswordPage from './pages/ChangePasswordPage';
 import Dashboard from './pages/Dashboard';
 import AppointmentsPage from './pages/AppointmentsPage';
 import HealthTracker from './pages/HealthTracker';
@@ -17,12 +14,13 @@ import AdminDashboard from './pages/AdminDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
 import ChatPage from './pages/ChatPage';
 import DiagnosisPage from './pages/DiagnosisPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 function AppContent() {
   const { user, loading, logout } = useAuth();
   const [activePage, setActivePage] = useState('dashboard');
   const [authView, setAuthView] = useState('landing');
-  const [resetData, setResetData] = useState(null);
 
   React.useEffect(() => {
     // Handle browser back/forward buttons
@@ -34,19 +32,6 @@ function AppContent() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [authView]);
-
-  React.useEffect(() => {
-    if (!user) return;
-    const params = new URLSearchParams(window.location.search);
-    const page = params.get('page');
-    if (params.get('ai_subscription') === 'success' || page === 'records') {
-      setActivePage('records');
-    }
-    if (params.has('ai_subscription') || params.has('page')) {
-      const clean = window.location.pathname + (window.location.hash || '');
-      window.history.replaceState({}, '', clean);
-    }
-  }, [user]);
 
   React.useEffect(() => {
     // Push history state when navigating
@@ -80,62 +65,25 @@ function AppContent() {
         />
       );
     }
-    if (authView === 'forgot-password') {
-      return (
-        <ForgotPasswordPage
-          onBack={() => setAuthView('login')}
-          onSuccess={(token, email, userType) => {
-            setResetData({ token, email, userType });
-            setAuthView('reset-password');
-          }}
-        />
-      );
-    }
-    if (authView === 'reset-password') {
-      return (
-        <ResetPasswordPage
-          onBack={() => setAuthView('login')}
-          initialData={resetData}
-        />
-      );
-    }
     return authView === 'login'
-      ? <LoginPage 
-          onSwitch={() => setAuthView('register')} 
-          onBack={() => setAuthView('landing')}
-          onForgotPassword={() => setAuthView('forgot-password')}
-        />
+      ? <LoginPage onSwitch={() => setAuthView('register')} onBack={() => setAuthView('landing')} />
       : <RegisterPage onSwitch={() => setAuthView('login')} onBack={() => setAuthView('landing')} />;
   }
 
   if (user.role === 'admin') return <AdminDashboard user={user} onLogout={logout} />;
   if (user.role === 'doctor') return <DoctorDashboard user={user} onLogout={logout} />;
 
-  if (activePage === 'change-password') {
-    return (
-      <div className="app-layout">
-        <Sidebar activePage={activePage} setActivePage={setActivePage} />
-        <main className="main-content">
-          <ChangePasswordPage
-            user={user}
-            token={localStorage.getItem('token')}
-            onBack={() => setActivePage('dashboard')}
-          />
-        </main>
-      </div>
-    );
-  }
-
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard':    return <Dashboard setActivePage={setActivePage} />;
-      case 'appointments': return <AppointmentsPage />;
-      case 'health':       return <HealthTracker />;
-      case 'diagnosis':    return <DiagnosisPage />;
-      case 'chat':         return <ChatPage />;
-      case 'education':    return <EducationPage />;
-      case 'records':      return <RecordsPage />;
-      default:             return <Dashboard setActivePage={setActivePage} />;
+      case 'dashboard':        return <Dashboard setActivePage={setActivePage} />;
+      case 'appointments':     return <AppointmentsPage />;
+      case 'health':           return <HealthTracker />;
+      case 'diagnosis':        return <DiagnosisPage />;
+      case 'chat':             return <ChatPage />;
+      case 'education':        return <EducationPage />;
+      case 'records':          return <RecordsPage />;
+      case 'change-password':  return <ChangePasswordPage />;
+      default:                 return <Dashboard setActivePage={setActivePage} />;
     }
   };
 

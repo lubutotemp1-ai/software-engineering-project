@@ -96,7 +96,7 @@ router.post('/doctors/:id/reset-password', async (req, res) => {
 // GET all patients
 router.get('/patients', async (req, res) => {
   try {
-    const patients = await db.all_("SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE role = 'patient' ORDER BY name ASC");
+    const patients = await db.all_('SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE role = ? ORDER BY name ASC', ['patient']);
     res.json(patients);
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });
@@ -104,7 +104,7 @@ router.get('/patients', async (req, res) => {
 // GET single patient details
 router.get('/patients/:id', async (req, res) => {
   try {
-    const patient = await db.get_("SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE id = ? AND role = 'patient'", [req.params.id]);
+    const patient = await db.get_('SELECT id, name, email, phone, date_of_birth, blood_type, created_at FROM users WHERE id = ? AND role = ?', [req.params.id, 'patient']);
     if (!patient) return res.status(404).json({ error: 'Patient not found.' });
     const appointments = await db.all_('SELECT * FROM appointments WHERE patient_id = ? ORDER BY appointment_date DESC', [req.params.id]);
     const healthRecords = await db.all_('SELECT * FROM health_records WHERE patient_id = ? ORDER BY record_date DESC', [req.params.id]);
@@ -143,18 +143,130 @@ router.put('/appointments/:id', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const [patients, doctors, appointments, pending] = await Promise.all([
-      db.get_("SELECT COUNT(*)::int AS count FROM users WHERE role = 'patient'"),
-      db.get_('SELECT COUNT(*)::int AS count FROM doctors'),
-      db.get_('SELECT COUNT(*)::int AS count FROM appointments'),
-      db.get_("SELECT COUNT(*)::int AS count FROM appointments WHERE status = 'pending'"),
+      db.get_('SELECT COUNT(*) as count FROM users WHERE role = ?', ['patient']),
+      db.get_('SELECT COUNT(*) as count FROM doctors'),
+      db.get_('SELECT COUNT(*) as count FROM appointments'),
+      db.get_('SELECT COUNT(*) as count FROM appointments WHERE status = ?', ['pending']),
     ]);
     res.json({
-      totalPatients: Number(patients?.count ?? 0),
-      totalDoctors: Number(doctors?.count ?? 0),
-      totalAppointments: Number(appointments?.count ?? 0),
-      pendingAppointments: Number(pending?.count ?? 0),
+      totalPatients: patients.count,
+      totalDoctors: doctors.count,
+      totalAppointments: appointments.count,
+      pendingAppointments: pending.count,
     });
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
+});
+
+router.get('/appointments', async (req, res) => {
+  try {
+    const appts = await db.all_(`
+      SELECT a.*, u.name as patient_name, u.email as patient_email
+      FROM appointments a
+      JOIN users u ON a.patient_id = u.id
+      ORDER BY a.appointment_date DESC
+    `);
+    res.json(appts);
+  } catch (err) { res.status(500).json({ error: 'Server error.' }); }
+});
+
+// ── AI USAGE MANAGEMENT ──────────────────────────────────
+
+// GET user's AI usage for current month
+router.get('/users/:userId/ai-usage', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await db.get_('SELECT id, name, email FROM users WHERE id = ?', [userId]);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get subscription limits
+    const subscription = await db.get_(
+      `SELECT p.ai_diagnosis_limit, p.health_education_limit, p.name as plan_name
+       FROM subscriptions s
+       JOIN plans p ON s.plan_id = p.id
+       WHERE s.user_id = ?`,
+      [userId]
+    );
+
+    const diagnosisLimit = subscription?.ai_diagnosis_limit || 7;
+    const educationLimit = subscription?.health_education_limit || 10;
+
+    // Get current usage
+    const diagnosisUsage = await db.get_(
+      `SELECT COALESCE(SUM(usage_count), 0) as total FROM ai_usage 
+       WHERE user_id = ? AND service_type = 'diagnosis' AND period_start >= ?`,
+      [userId, monthStart.toISOString()]
+    );
+
+    const educationUsage = await db.get_(
+      `SELECT COALESCE(SUM(usage_count), 0) as total FROM ai_usage 
+       WHERE user_id = ? AND service_type = 'education' AND period_start >= ?`,
+      [userId, monthStart.toISOString()]
+    );
+
+    res.json({
+      user,
+      plan: subscription?.plan_name || 'Free',
+      diagnosis: {
+        used: diagnosisUsage?.total || 0,
+        limit: diagnosisLimit,
+        remaining: Math.max(0, diagnosisLimit - (diagnosisUsage?.total || 0))
+      },
+      education: {
+        used: educationUsage?.total || 0,
+        limit: educationLimit,
+        remaining: Math.max(0, educationLimit - (educationUsage?.total || 0))
+      },
+      billingPeriodStart: monthStart.toISOString()
+    });
+  } catch (err) {
+    console.error('Error getting AI usage:', err);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// POST reset AI usage for a user
+router.post('/users/:userId/reset-ai-usage', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { service } = req.body; // 'diagnosis', 'education', or 'both'
+
+    const user = await db.get_('SELECT id, name, email FROM users WHERE id = ?', [userId]);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    if (!service || !['diagnosis', 'education', 'both'].includes(service)) {
+      return res.status(400).json({ error: 'Invalid service type. Must be "diagnosis", "education", or "both".' });
+    }
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    if (service === 'diagnosis' || service === 'both') {
+      await db.run_(
+        `DELETE FROM ai_usage WHERE user_id = ? AND service_type = 'diagnosis' AND period_start >= ?`,
+        [userId, monthStart.toISOString()]
+      );
+    }
+
+    if (service === 'education' || service === 'both') {
+      await db.run_(
+        `DELETE FROM ai_usage WHERE user_id = ? AND service_type = 'education' AND period_start >= ?`,
+        [userId, monthStart.toISOString()]
+      );
+    }
+
+    res.json({
+      message: `AI ${service} usage reset successfully for user ${user.name}`,
+      user,
+      resetService: service,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Error resetting AI usage:', err);
+    res.status(500).json({ error: 'Server error.' });
+  }
 });
 
 module.exports = router;

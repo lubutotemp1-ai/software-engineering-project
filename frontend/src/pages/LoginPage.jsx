@@ -35,7 +35,7 @@ const COUNTRY_CODES = [
   { code: '+61', name: 'AU' },
 ];
 
-export default function LoginPage({ onSwitch, onBack, onForgotPassword }) {
+export default function LoginPage({ onSwitch, onBack }) {
   const { login, doctorLogin } = useAuth();
   const [tab, setTab] = useState('patient');
   const [form, setForm] = useState({ email: '', password: '' });
@@ -107,7 +107,13 @@ export default function LoginPage({ onSwitch, onBack, onForgotPassword }) {
               </button>
             ))}
           </div>
-          
+
+          {tab === 'admin' && (
+            <div className="alert alert-info" style={{ fontSize: '12px' }}>
+              <Sparkles size={14} strokeWidth={2} />
+              Default admin: <strong>admin@hospital.com</strong> / <strong>admin123</strong>
+            </div>
+          )}
 
           {error && <div className="alert alert-error">
             <ChevronRight size={14} strokeWidth={2} />
@@ -141,22 +147,6 @@ export default function LoginPage({ onSwitch, onBack, onForgotPassword }) {
                   )}
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                style={{
-                  marginTop: 8,
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--pistachio-frost)',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  textDecoration: 'underline',
-                }}
-              >
-                Forgot password?
-              </button>
             </div>
 
             <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} disabled={loading}>

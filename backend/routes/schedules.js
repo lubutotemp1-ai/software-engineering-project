@@ -50,7 +50,7 @@ router.post('/block', doctorOnly, async (req, res) => {
       if (existing) {
         // Update existing
         await db.run_(
-          'UPDATE doctor_schedules SET is_available = FALSE, reason = ? WHERE id = ?',
+          'UPDATE doctor_schedules SET is_available = 0, reason = ? WHERE id = ?',
           [reason || 'Doctor unavailable', existing.id]
         );
         results.push(existing.id);
@@ -96,7 +96,7 @@ router.get('/doctor/:doctorId/unavailable', async (req, res) => {
   try {
     const { month, year } = req.query;
     
-    let query = 'SELECT schedule_date, reason FROM doctor_schedules WHERE doctor_id = ? AND is_available = FALSE';
+    let query = 'SELECT schedule_date, reason FROM doctor_schedules WHERE doctor_id = ? AND is_available = 0';
     const params = [req.params.doctorId];
 
     // Filter by month/year if provided
@@ -133,7 +133,7 @@ router.get('/check-date', async (req, res) => {
 
     // Check if date is blocked
     const blocked = await db.get_(
-      'SELECT id, reason FROM doctor_schedules WHERE doctor_id = ? AND schedule_date = ? AND is_available = FALSE',
+      'SELECT id, reason FROM doctor_schedules WHERE doctor_id = ? AND schedule_date = ? AND is_available = 0',
       [doctorId, date]
     );
 
@@ -145,7 +145,7 @@ router.get('/check-date', async (req, res) => {
     const doctor = await db.get_('SELECT name FROM doctors WHERE id = ?', [doctorId]);
     if (doctor) {
       const appointments = await db.all_(
-        "SELECT appointment_time FROM appointments WHERE doctor_name = ? AND appointment_date = ? AND status != 'cancelled'",
+        'SELECT appointment_time FROM appointments WHERE doctor_name = ? AND appointment_date = ? AND status != "cancelled"',
         [doctor.name, date]
       );
 
@@ -165,7 +165,7 @@ router.get('/my-unavailable', doctorOnly, async (req, res) => {
   try {
     const schedules = await db.all_(
       `SELECT schedule_date, reason FROM doctor_schedules 
-       WHERE doctor_id = ? AND is_available = FALSE 
+       WHERE doctor_id = ? AND is_available = 0 
        ORDER BY schedule_date DESC`,
       [req.user.id]
     );

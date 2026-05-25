@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import API_URL from '../apiConfig';
 import { useAuth } from '../context/AuthContext';
-import AiUsagePanel from '../components/AiUsagePanel';
 
 const SEVERITY = [
   { value: 'mild',      label: 'Mild',      color: '#27ae60', bg: '#eafaf1', desc: 'Minor discomfort, can continue daily activities' },
@@ -133,16 +131,17 @@ export default function DiagnosisPage() {
   const [sendSuccess, setSendSuccess]   = useState('');
   const [activeTab, setActiveTab]       = useState('new');
   const [expandedHistory, setExpandedHistory] = useState(null);
-  const usageRefreshRef = useRef(null);
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
     fetchHistory();
-    axios.get(`${API_URL}/api/doctors`).then(r => setDoctors(r.data)).catch(() => {});
+    axios.get('/api/doctors').then(r => setDoctors(r.data)).catch(() => {});
+    axios.get('/api/payments/subscription').then(r => setSubscription(r.data)).catch(() => {});
   }, []);
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/diagnosis/history`);
+      const res = await axios.get('/api/diagnosis/history');
       setHistory(res.data);
     } catch {}
   };
@@ -153,19 +152,13 @@ export default function DiagnosisPage() {
     setLoading(true);
     setDiagnosis(null);
     try {
-      const res = await axios.post(`${API_URL}/api/diagnosis/check`, { symptoms, duration, severity });
+      const res = await axios.post('/api/diagnosis/check', { symptoms, duration, severity });
       // Support both response shapes
       const diag = res.data.diagnosis || res.data;
       setDiagnosis(diag);
       fetchHistory();
-      usageRefreshRef.current?.();
     } catch (err) {
-      if (err.response?.status === 402) {
-        alert(err.response?.data?.error || 'AI monthly limit reached. Upgrade your plan to continue.');
-        usageRefreshRef.current?.();
-      } else {
-        alert(err.response?.data?.error || 'Failed to get AI diagnosis.');
-      }
+      alert(err.response?.data?.error || 'Failed to get AI diagnosis.');
     } finally { setLoading(false); }
   };
 
@@ -174,7 +167,7 @@ export default function DiagnosisPage() {
     if (!selectedDoctor || !doc) return;
     setSending(true);
     try {
-      await axios.post(`${API_URL}/api/diagnosis/${doc.id}/send-to-doctor`, { doctorId: selectedDoctor });
+      await axios.post(`/api/diagnosis/${doc.id}/send-to-doctor`, { doctorId: selectedDoctor });
       setSendSuccess('Diagnosis sent to doctor successfully!');
       fetchHistory();
       if (diagnosis?.id === doc.id) setDiagnosis(prev => ({ ...prev, sent_to_doctor: 1 }));
@@ -187,7 +180,7 @@ export default function DiagnosisPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this diagnosis?')) return;
     try {
-      await axios.delete(`${API_URL}/api/diagnosis/${id}`);
+      await axios.delete(`/api/diagnosis/${id}`);
       fetchHistory();
       if (diagnosis?.id === id) setDiagnosis(null);
     } catch {}
@@ -197,12 +190,30 @@ export default function DiagnosisPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>🤖 AI Health Diagnosis</h1>
-        <p>Get a preliminary symptom assessment powered by Gemini AI</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>🤖 AI Health Diagnosis</h1>
+          <p>Get a preliminary symptom assessment powered by Gemini AI</p>
+        </div>
+        {subscription && (
+          <div style={{
+            background: 'rgba(37, 99, 235, 0.1)',
+            border: '1px solid rgba(37, 99, 235, 0.3)',
+            borderRadius: '12px',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            whiteSpace: 'nowrap'
+          }}>
+            <span style={{ fontSize: '16px' }}>💎</span>
+            <div>
+              <div style={{ fontSize: '11px', color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Current Plan</div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#2563EB' }}>{subscription.name}</div>
+            </div>
+          </div>
+        )}
       </div>
-
-      <AiUsagePanel refreshRef={usageRefreshRef} defaultShowPlans />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid #e8e8e8' }}>

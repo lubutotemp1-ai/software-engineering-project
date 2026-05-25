@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
 
     // CRITICAL: Check if the requested date is blocked by the doctor
     const blockedDate = await db.get_(
-      'SELECT id, reason FROM doctor_schedules WHERE doctor_id = ? AND schedule_date = ? AND is_available = FALSE',
+      'SELECT id, reason FROM doctor_schedules WHERE doctor_id = ? AND schedule_date = ? AND is_available = 0',
       [doctor_id, appointment_date]
     );
     if (blockedDate) {

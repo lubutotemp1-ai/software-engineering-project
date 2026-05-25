@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import API_URL from '../apiConfig';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function HealthTracker() {
@@ -25,8 +24,8 @@ export default function HealthTracker() {
   const fetchAll = async () => {
     try {
       const [rRes, mRes] = await Promise.all([
-        axios.get(`${API_URL}/api/health`),
-        axios.get(`${API_URL}/api/health/medications`),
+        axios.get('/api/health'),
+        axios.get('/api/health/medications'),
       ]);
       setRecords(rRes.data);
       setMedications(mRes.data);
@@ -48,7 +47,7 @@ export default function HealthTracker() {
         return;
       }
       
-      await axios.post(`${API_URL}/api/health`, recordForm);
+      await axios.post('/api/health', recordForm);
       setSuccess('Health record saved!');
       setShowRecordModal(false);
       setRecordForm({ record_date: new Date().toISOString().split('T')[0], weight: '', height: '', blood_pressure: '', heart_rate: '', blood_sugar: '', temperature: '', notes: '' });
@@ -63,7 +62,7 @@ export default function HealthTracker() {
   const handleAddMed = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/api/health/medications`, medForm);
+      await axios.post('/api/health/medications', medForm);
       setSuccess('Medication added!');
       setShowMedModal(false);
       setMedForm({ name: '', dosage: '', frequency: '', start_date: '', end_date: '', notes: '' });
@@ -76,13 +75,13 @@ export default function HealthTracker() {
 
   const deleteRecord = async (id) => {
     if (!window.confirm('Delete this record?')) return;
-    await axios.delete(`${API_URL}/api/health/${id}`);
+    await axios.delete(`/api/health/${id}`);
     fetchAll();
   };
 
   const deleteMed = async (id) => {
     if (!window.confirm('Remove this medication?')) return;
-    await axios.delete(`${API_URL}/api/health/medications/${id}`);
+    await axios.delete(`/api/health/medications/${id}`);
     fetchAll();
   };
 

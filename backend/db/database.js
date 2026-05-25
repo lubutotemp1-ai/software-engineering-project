@@ -1,56 +1,55 @@
-require('dotenv').config();
-const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
+const path = require('path');
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('❌ Missing DATABASE_URL. Set backend/.env or your host environment with your Supabase connection string.');
-  process.exit(1);
+let db;
+const dbType = process.env.DATABASE_URL?.startsWith('sqlite:') ? 'sqlite' : 'postgresql';
+
+if (dbType === 'sqlite') {
+  // Use SQLite for local development
+  const Database = require('better-sqlite3');
+  const dbPath = process.env.DATABASE_URL.replace('sqlite:', '') || './health_portal.db';
+  db = new Database(dbPath);
+  db.pragma('journal_mode = WAL');
+  console.log('📦 Using SQLite database for development');
+} else {
+  // Use PostgreSQL for production
+  const { Pool } = require('pg');
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL || 'postgresql://healthportal_user:BrbR3sKAExnna4ROBpA8obkLXVVHQcYZ@dpg-d87lpgojs32c73ef6lo0-a.oregon-postgres.render.com/healthportal',
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  });
+
+  pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+  });
+
+  pool.on('connect', () => {
+    console.log('✅ Connected to PostgreSQL database');
+  });
+
+  db = pool;
 }
 
-const pool = new Pool({
-  connectionString,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
+// Initialize database tables
+async function initializeTables() {
+  try {
+    if (dbType === 'sqlite') {
+      initializeSQLite();
+    } else {
+      await initializePostgreSQL();
+    }
+    console.log('✅ Database tables initialized successfully');
+  } catch (err) {
+    console.error('❌ Error initializing database:', err);
+    throw err;
+  }
+}
 
-const convertPlaceholders = (sql) => {
-  let index = 0;
-  return sql.replace(/\?/g, () => `$${++index}`);
-};
-
-const runQuery = async (sql, params = []) => {
-  const text = convertPlaceholders(sql);
-  return pool.query(text, params);
-};
-
-const db = {
-  query: runQuery,
-  get_: async (sql, params = []) => {
-    const result = await runQuery(sql, params);
-    return result.rows[0] || null;
-  },
-  all_: async (sql, params = []) => {
-    const result = await runQuery(sql, params);
-    return result.rows;
-  },
-  run_: async (sql, params = []) => {
-    const skipAutoReturning = /INSERT\s+INTO\s+user_ai_subscriptions\b/i.test(sql);
-    const needsReturning = /^\s*INSERT\s+/i.test(sql) && !/\bRETURNING\b/i.test(sql) && !skipAutoReturning;
-    const text = convertPlaceholders(needsReturning ? `${sql} RETURNING id` : sql);
-    const result = await pool.query(text, params);
-    return {
-      lastInsertRowid: result.rows?.[0]?.id ?? null,
-      rows: result.rows,
-      changes: result.rowCount,
-    };
-  },
-};
-
-const initDb = async () => {
-  await runQuery(`
+function initializeSQLite() {
+  // Users table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
@@ -58,28 +57,89 @@ const initDb = async () => {
       phone TEXT,
       date_of_birth TEXT,
       blood_type TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
+      subscription_plan TEXT DEFAULT 'free',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  await runQuery(`
+  // Doctors table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS doctors (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       department TEXT,
       specialization TEXT,
       phone TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  await runQuery(`
+  // Plans table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      price REAL,
+      ai_diagnosis_limit INTEGER DEFAULT 0,
+      health_education_limit INTEGER DEFAULT 0,
+      stripe_price_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Subscriptions table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      plan_id INTEGER NOT NULL,
+      stripe_subscription_id TEXT,
+      status TEXT DEFAULT 'active',
+      current_period_start DATETIME,
+      current_period_end DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id),
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY(plan_id) REFERENCES plans(id)
+    )
+  `);
+
+  // AI Usage table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ai_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      service_type TEXT NOT NULL,
+      usage_count INTEGER DEFAULT 1,
+      period_start DATETIME DEFAULT CURRENT_TIMESTAMP,
+      period_end DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Password reset tokens table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      email TEXT NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Appointments table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS appointments (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_id INTEGER NOT NULL,
       doctor_id INTEGER NOT NULL,
       title TEXT NOT NULL,
@@ -88,16 +148,17 @@ const initDb = async () => {
       appointment_time TEXT NOT NULL,
       status TEXT DEFAULT 'pending',
       notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (patient_id) REFERENCES users(id),
-      FOREIGN KEY (doctor_id) REFERENCES doctors(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(patient_id) REFERENCES users(id),
+      FOREIGN KEY(doctor_id) REFERENCES doctors(id)
     )
   `);
 
-  await runQuery(`
+  // Health records table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS health_records (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_id INTEGER NOT NULL,
       user_id INTEGER,
       title TEXT,
@@ -113,15 +174,16 @@ const initDb = async () => {
       temperature REAL,
       notes TEXT,
       recorded_by INTEGER,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (patient_id) REFERENCES users(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(patient_id) REFERENCES users(id)
     )
   `);
 
-  await runQuery(`
+  // Medications table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS medications (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       dosage TEXT,
@@ -130,146 +192,496 @@ const initDb = async () => {
       end_date TEXT,
       notes TEXT,
       prescribed_by INTEGER,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (patient_id) REFERENCES users(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(patient_id) REFERENCES users(id)
     )
   `);
 
-  await runQuery(`
+  // Education materials table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS education_materials (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       description TEXT,
       content TEXT,
       category TEXT,
       file_url TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  await runQuery(`
+  // Chat messages table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS chat_messages (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       sender_id INTEGER NOT NULL,
       sender_role TEXT NOT NULL,
       receiver_id INTEGER,
       receiver_role TEXT,
       message TEXT NOT NULL,
-      is_read BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      is_read INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  await runQuery(`
-    ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_sender_id_fkey
-  `).catch(() => {});
-  await runQuery(`
-    ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_receiver_id_fkey
-  `).catch(() => {});
-
-  await runQuery(`
-    CREATE TABLE IF NOT EXISTS user_ai_subscriptions (
-      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-      plan TEXT NOT NULL DEFAULT 'free',
-      uses_this_month INTEGER NOT NULL DEFAULT 0,
-      period_start DATE NOT NULL DEFAULT CURRENT_DATE,
-      stripe_customer_id TEXT,
-      stripe_subscription_id TEXT,
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  await runQuery(`
+  // Diagnosis table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS diagnosis (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       symptoms TEXT NOT NULL,
       diagnosis_result TEXT,
       recommendations TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (user_id) REFERENCES users(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id)
     )
   `);
 
-  await runQuery(`
+  // Doctor schedules table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS doctor_schedules (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       doctor_id INTEGER NOT NULL,
       doctor_name TEXT,
       schedule_date TEXT,
       day_of_week TEXT,
       start_time TEXT,
       end_time TEXT,
-      is_available BOOLEAN DEFAULT TRUE,
+      is_available INTEGER DEFAULT 1,
       reason TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (doctor_id) REFERENCES doctors(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(doctor_id) REFERENCES doctors(id)
     )
   `);
 
-  await runQuery(`
+  // AI Diagnoses table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS ai_diagnoses (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_id INTEGER NOT NULL,
       patient_name TEXT NOT NULL,
       symptoms TEXT NOT NULL,
       duration TEXT,
       severity TEXT,
       diagnosis TEXT NOT NULL,
-      sent_to_doctor BOOLEAN DEFAULT FALSE,
+      sent_to_doctor INTEGER DEFAULT 0,
       doctor_id INTEGER,
       sent_to_doctor_name TEXT,
       appointment_id INTEGER,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (patient_id) REFERENCES users(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(patient_id) REFERENCES users(id)
     )
   `);
 
-  await runQuery(`
-    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER,
-      doctor_id INTEGER,
-      user_type TEXT NOT NULL,
-      email TEXT NOT NULL,
-      token TEXT UNIQUE NOT NULL,
-      is_used BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      expires_at TIMESTAMPTZ NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (doctor_id) REFERENCES doctors(id)
-    )
-  `);
-
-  await runQuery(`
+  // Admins table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS admins (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  const adminPasswordHash = require('bcryptjs').hashSync('admin123', 10);
-  await runQuery(
-    `INSERT INTO users (name, email, password, role) VALUES ('Admin', 'admin@hospital.com', $1, 'admin') ON CONFLICT (email) DO NOTHING`,
-    [adminPasswordHash]
-  );
+  // Insert default plans
+  try {
+    const insertPlan = db.prepare(`
+      INSERT OR IGNORE INTO plans (name, description, price, ai_diagnosis_limit, health_education_limit, stripe_price_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    insertPlan.run('Free', 'Basic free plan', 0, 7, 10, 'price_free');
+    insertPlan.run('Pro', 'Professional plan', 9.99, 50, 100, 'price_pro');
+    insertPlan.run('Plus', 'Plus plan', 14.99, 150, 300, 'price_plus');
+    insertPlan.run('Max', 'Maximum usage plan', 24.99, 500, 1000, 'price_max');
+  } catch (e) {
+    // Plans may already exist
+    console.error('Error inserting plans:', e.message);
+  }
 
-  await runQuery(
-    `INSERT INTO admins (name, email, password) VALUES ('Admin', 'admin@hospital.com', $1) ON CONFLICT (email) DO NOTHING`,
-    [adminPasswordHash]
-  );
+  // Insert default admin
+  try {
+    const adminPasswordHash = bcrypt.hashSync('admin123', 10);
+    const insertUser = db.prepare(`
+      INSERT OR IGNORE INTO users (name, email, password, role) 
+      VALUES (?, ?, ?, ?)
+    `);
+    insertUser.run('Admin', 'admin@hospital.com', adminPasswordHash, 'admin');
+    
+    const insertAdmin = db.prepare(`
+      INSERT OR IGNORE INTO admins (name, email, password) 
+      VALUES (?, ?, ?)
+    `);
+    insertAdmin.run('Admin', 'admin@hospital.com', adminPasswordHash);
+  } catch (e) {
+    // Admin may already exist
+    console.error('Error inserting admin:', e.message);
+  }
+}
+
+async function initializePostgreSQL() {
+  const client = await db.connect();
+  try {
+    // Enable UUID extension
+    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+
+    // Users table (patients and admins)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'patient',
+        phone TEXT,
+        date_of_birth TEXT,
+        blood_type TEXT,
+        subscription_plan TEXT DEFAULT 'free',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Doctors table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS doctors (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        department TEXT,
+        specialization TEXT,
+        phone TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Plans table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS plans (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        price DECIMAL(10, 2),
+        ai_diagnosis_limit INTEGER DEFAULT 0,
+        health_education_limit INTEGER DEFAULT 0,
+        stripe_price_id TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Subscriptions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_id INTEGER NOT NULL REFERENCES plans(id),
+        stripe_subscription_id TEXT,
+        status TEXT DEFAULT 'active',
+        current_period_start TIMESTAMP,
+        current_period_end TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      )
+    `);
+
+    // AI Usage tracking table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_usage (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        service_type TEXT NOT NULL,
+        usage_count INTEGER DEFAULT 1,
+        period_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        period_end TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Password reset tokens table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Appointments table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS appointments (
+        id SERIAL PRIMARY KEY,
+        patient_id INTEGER NOT NULL REFERENCES users(id),
+        doctor_id INTEGER NOT NULL REFERENCES doctors(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        appointment_date TEXT NOT NULL,
+        appointment_time TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Health records table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS health_records (
+        id SERIAL PRIMARY KEY,
+        patient_id INTEGER NOT NULL REFERENCES users(id),
+        user_id INTEGER,
+        title TEXT,
+        description TEXT,
+        record_type TEXT,
+        file_url TEXT,
+        record_date TEXT NOT NULL,
+        weight REAL,
+        height REAL,
+        blood_pressure TEXT,
+        heart_rate INTEGER,
+        blood_sugar REAL,
+        temperature REAL,
+        notes TEXT,
+        recorded_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Medications table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS medications (
+        id SERIAL PRIMARY KEY,
+        patient_id INTEGER NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL,
+        dosage TEXT,
+        frequency TEXT,
+        start_date TEXT,
+        end_date TEXT,
+        notes TEXT,
+        prescribed_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Education materials table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS education_materials (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        content TEXT,
+        category TEXT,
+        file_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Chat messages table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL,
+        sender_role TEXT NOT NULL,
+        receiver_id INTEGER,
+        receiver_role TEXT,
+        message TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Diagnosis table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS diagnosis (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        symptoms TEXT NOT NULL,
+        diagnosis_result TEXT,
+        recommendations TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Doctor schedules table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS doctor_schedules (
+        id SERIAL PRIMARY KEY,
+        doctor_id INTEGER NOT NULL REFERENCES doctors(id),
+        doctor_name TEXT,
+        schedule_date TEXT,
+        day_of_week TEXT,
+        start_time TEXT,
+        end_time TEXT,
+        is_available INTEGER DEFAULT 1,
+        reason TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // AI Diagnoses table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_diagnoses (
+        id SERIAL PRIMARY KEY,
+        patient_id INTEGER NOT NULL REFERENCES users(id),
+        patient_name TEXT NOT NULL,
+        symptoms TEXT NOT NULL,
+        duration TEXT,
+        severity TEXT,
+        diagnosis TEXT NOT NULL,
+        sent_to_doctor INTEGER DEFAULT 0,
+        doctor_id INTEGER,
+        sent_to_doctor_name TEXT,
+        appointment_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Admins table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default plans if they don't exist
+    await client.query(`
+      INSERT INTO plans (name, description, price, ai_diagnosis_limit, health_education_limit, stripe_price_id)
+      VALUES 
+        ('Free', 'Basic free plan', 0, 7, 10, 'price_free'),
+        ('Pro', 'Professional plan', 9.99, 50, 100, 'price_pro'),
+        ('Plus', 'Plus plan', 14.99, 150, 300, 'price_plus'),
+        ('Max', 'Maximum usage plan', 24.99, 500, 1000, 'price_max')
+      ON CONFLICT DO NOTHING
+    `);
+
+    // Insert default admin
+    const adminPasswordHash = bcrypt.hashSync('admin123', 10);
+    await client.query(`
+      INSERT INTO users (name, email, password, role) 
+      VALUES ('Admin', 'admin@hospital.com', $1, 'admin')
+      ON CONFLICT (email) DO NOTHING
+    `, [adminPasswordHash]);
+
+    await client.query(`
+      INSERT INTO admins (name, email, password) 
+      VALUES ('Admin', 'admin@hospital.com', $1)
+      ON CONFLICT (email) DO NOTHING
+    `, [adminPasswordHash]);
+
+    client.release();
+  } catch (err) {
+    client.release();
+    throw err;
+  }
+}
+
+// Initialize tables on startup
+initializeTables().catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
+});
+
+// Helper methods for database queries
+const dbModule = {
+  query: async (sql, params = []) => {
+    if (dbType === 'sqlite') {
+      try {
+        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
+        let convertedSql = sql;
+        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
+        const stmt = db.prepare(convertedSql);
+        return { rows: stmt.all(...params), rowCount: 1 };
+      } catch (err) {
+        throw err;
+      }
+    } else {
+      return await db.query(sql, params);
+    }
+  },
+  
+  get_: async (sql, params = []) => {
+    if (dbType === 'sqlite') {
+      try {
+        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
+        let convertedSql = sql;
+        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
+        const stmt = db.prepare(convertedSql);
+        return stmt.get(...params);
+      } catch (err) {
+        return null;
+      }
+    } else {
+      const result = await db.query(sql, params);
+      return result.rows[0];
+    }
+  },
+
+  run_: async (sql, params = []) => {
+    if (dbType === 'sqlite') {
+      try {
+        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
+        let convertedSql = sql;
+        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
+        const stmt = db.prepare(convertedSql);
+        const result = stmt.run(...params);
+        return {
+          lastInsertRowid: result.lastInsertRowid || null,
+          changes: result.changes
+        };
+      } catch (err) {
+        return { lastInsertRowid: null, changes: 0 };
+      }
+    } else {
+      const result = await db.query(sql, params);
+      return {
+        lastInsertRowid: result.rows[0]?.id || null,
+        changes: result.rowCount
+      };
+    }
+  },
+
+  all_: async (sql, params = []) => {
+    if (dbType === 'sqlite') {
+      try {
+        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
+        let convertedSql = sql;
+        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
+        const stmt = db.prepare(convertedSql);
+        return stmt.all(...params);
+      } catch (err) {
+        return [];
+      }
+    } else {
+      const result = await db.query(sql, params);
+      return result.rows;
+    }
+  }
 };
 
+// Gracefully close database on process exit
 process.on('SIGINT', async () => {
-  await pool.end();
-  console.log('Database connection closed.');
+  try {
+    if (dbType === 'sqlite') {
+      db.close();
+    } else {
+      await db.end();
+    }
+    console.log('Database connection closed.');
+  } catch (err) {
+    console.error('Error closing database:', err);
+  }
   process.exit(0);
 });
 
-module.exports = db;
-module.exports.initDb = initDb;
-module.exports.pool = pool;
+module.exports = dbModule;

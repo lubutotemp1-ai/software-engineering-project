@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import API_URL from '../apiConfig';
 
 export default function Dashboard({ setActivePage }) {
   const { user } = useAuth();
   const [stats, setStats] = useState({ appointments: 0, records: 0, medications: 0 });
+  const [subscription, setSubscription] = useState(null);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [latestRecord, setLatestRecord] = useState(null);
   const [tips, setTips] = useState([]);
@@ -15,12 +15,13 @@ export default function Dashboard({ setActivePage }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [apptRes, healthRes, latestRes, medsRes, tipsRes] = await Promise.all([
-          axios.get(`${API_URL}/api/appointments`),
-          axios.get(`${API_URL}/api/health`),
-          axios.get(`${API_URL}/api/health/latest`),
-          axios.get(`${API_URL}/api/health/medications`),
-          axios.get(`${API_URL}/api/education/tips`),
+        const [apptRes, healthRes, latestRes, medsRes, tipsRes, subRes] = await Promise.all([
+          axios.get('/api/appointments'),
+          axios.get('/api/health'),
+          axios.get('/api/health/latest'),
+          axios.get('/api/health/medications'),
+          axios.get('/api/education/tips'),
+          axios.get('/api/payments/subscription'),
         ]);
         const allAppts = apptRes.data;
         const today = new Date().toISOString().split('T')[0];
@@ -29,6 +30,7 @@ export default function Dashboard({ setActivePage }) {
         setStats({ appointments: allAppts.length, records: healthRes.data.length, medications: medsRes.data.length });
         setLatestRecord(latestRes.data);
         setTips(tipsRes.data);
+        setSubscription(subRes.data);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     };
@@ -61,14 +63,34 @@ export default function Dashboard({ setActivePage }) {
   return (
     <div>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #2563EB, #60A5FA)', borderRadius: 'var(--radius-lg)', padding: '24px 28px', color: 'white', marginBottom: 24, position: 'relative', overflow: 'hidden' }}>
-        <p style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-          {new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-        </p>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: 4 }}>
-          {getGreeting()}, {user?.name?.split(' ')[0]}
-        </h1>
-        <p style={{ color: 'rgba(0, 0, 0, 0.9)', fontSize: '13.5px' }}>Here's your health summary for today.</p>
+      <div style={{ background: 'linear-gradient(135deg, #2563EB, #60A5FA)', borderRadius: 'var(--radius-lg)', padding: '24px 28px', color: 'white', marginBottom: 24, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <p style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+            {new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
+          <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: 4 }}>
+            {getGreeting()}, {user?.name?.split(' ')[0]}
+          </h1>
+          <p style={{ color: 'rgba(0, 0, 0, 0.9)', fontSize: '13.5px' }}>Here's your health summary for today.</p>
+        </div>
+        {subscription && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: '20px',
+            padding: '8px 16px',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <span style={{ fontSize: '20px' }}>💎</span>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Plan</div>
+              <div style={{ fontSize: '14px', fontWeight: 700 }}>{subscription.name}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats */}

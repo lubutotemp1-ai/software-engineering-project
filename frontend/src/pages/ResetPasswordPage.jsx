@@ -1,302 +1,311 @@
 import React, { useState } from 'react';
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ChevronRight,
-  Sparkles,
-  AlertCircle,
-  CheckCircle,
-} from 'lucide-react';
-import hospitalSvg from '../images/hospital-svgrepo-com (1).svg';
+import axios from 'axios';
+import { Lock, Mail, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 
-export default function ResetPasswordPage({ onBack, initialData }) {
-  const [email, setEmail] = useState(initialData?.email || '');
-  const [token, setToken] = useState(initialData?.token || '');
-  const [password, setPassword] = useState('');
+export default function ResetPasswordPage() {
+  const [step, setStep] = useState(1); // 1: Email, 2: Code & New Password
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
-  const validateForm = () => {
-    if (!email) {
-      setError('Email is required');
-      return false;
-    }
-    if (!token) {
-      setError('Reset token is required');
-      return false;
-    }
-    if (!password || !confirmPassword) {
-      setError('Both password fields are required');
-      return false;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleRequestReset = async (e) => {
     e.preventDefault();
+    setMessage('');
     setError('');
-    setSuccess('');
 
-    if (!validateForm()) return;
+    if (!email) {
+      setError('Email is required.');
+      return;
+    }
 
     setLoading(true);
-
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          token,
-          newPassword: password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to reset password');
-        return;
-      }
-
-      setSuccess(data.message);
-      // Reset form
-      setPassword('');
-      setConfirmPassword('');
-      setToken('');
-      setEmail('');
-
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        onBack?.();
-      }, 2000);
+      const res = await axios.post('/api/auth/request-password-reset', { email });
+      setMessage(res.data.message || 'Password reset code sent to your email.');
+      setStep(2);
     } catch (err) {
-      setError('Failed to connect to server. Please try again.');
-      console.error('Error:', err);
+      setError(err.response?.data?.error || 'Failed to request password reset.');
     } finally {
       setLoading(false);
     }
   };
 
-  const passwordsMatch = password && confirmPassword && password === confirmPassword;
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    setError('');
+
+    if (!code || !newPassword || !confirmPassword) {
+      setError('All fields are required.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await axios.post('/api/auth/reset-password', {
+        email,
+        code,
+        newPassword,
+      });
+      setMessage(res.data.message || 'Password reset successfully! You can now login.');
+      setTimeout(() => {
+        setStep(1);
+        setEmail('');
+        setCode('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }, 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to reset password.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="auth-page">
-      <button
-        onClick={onBack}
-        style={{
-          position: 'absolute',
-          top: 20,
-          left: 20,
-          background: '#000000',
-          border: 'none',
-          color: 'white',
-          padding: '8px 12px',
-          borderRadius: 8,
-          cursor: 'pointer',
-          fontSize: 14,
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          backdropFilter: 'blur(10px)',
-          zIndex: 10,
-        }}
-      >
-        ← Back
-      </button>
+    <div style={{ maxWidth: 500, margin: '0 auto', padding: '20px' }}>
+      <div className="page-header" style={{ marginBottom: 32, textAlign: 'center' }}>
+        <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <Lock size={24} strokeWidth={1.5} />
+          Reset Password
+        </h1>
+        <p>Recover your account access</p>
+      </div>
 
-      <div className="auth-container">
-        <div className="auth-brand">
-          <div className="auth-logo">
-            <img src={hospitalSvg} alt="Hospital" style={{ width: 36, height: 36 }} />
-          </div>
-          <h1>Health Easy Portal</h1>
-          <p>Create your new password</p>
-        </div>
-
-        <div className="auth-form">
-          {success ? (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div
-                style={{
-                  background: 'var(--success-light)',
-                  border: '1px solid var(--success-dark)',
-                  borderRadius: 12,
-                  padding: 24,
-                }}
-              >
-                <CheckCircle
-                  size={40}
-                  strokeWidth={1.5}
-                  style={{ color: 'var(--success-dark)', marginBottom: 12 }}
+      <div className="card" style={{ padding: 24, background: '#ffffff' }}>
+        {step === 1 ? (
+          // Step 1: Request Reset
+          <form onSubmit={handleRequestReset}>
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={18} style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#4B5563',
+                }} />
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{ paddingLeft: 40 }}
                 />
-                <h3 style={{ marginBottom: 8, color: 'var(--success-dark)' }}>
-                  Password Reset Successfully!
-                </h3>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: 16 }}>
-                  {success}
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Redirecting to login page...
-                </p>
+              </div>
+              <p style={{ fontSize: 12, color: '#4B5563', marginTop: 8 }}>
+                We'll send a reset code to this email address.
+              </p>
+            </div>
+
+            {message && (
+              <div style={{
+                marginBottom: 16,
+                padding: '12px 16px',
+                borderRadius: 8,
+                background: '#ECFDF5',
+                border: '1px solid #D1FAE5',
+                color: '#065F46',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <CheckCircle size={18} strokeWidth={1.5} />
+                <span>{message}</span>
+              </div>
+            )}
+
+            {error && (
+              <div style={{
+                marginBottom: 16,
+                padding: '12px 16px',
+                borderRadius: 8,
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                color: '#991B1B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <AlertCircle size={18} strokeWidth={1.5} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary"
+              style={{ width: '100%' }}
+            >
+              {loading ? 'Sending...' : 'Send Reset Code'}
+            </button>
+          </form>
+        ) : (
+          // Step 2: Verify Code & Reset Password
+          <form onSubmit={handleResetPassword}>
+            <div style={{ marginBottom: 20 }}>
+              <label className="form-label">Reset Code</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Enter the code sent to your email"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label className="form-label">New Password</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input"
+                  placeholder="Enter your new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#4B5563',
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
-          ) : (
-            <>
-              <h2>Reset Your Password</h2>
-              <p className="subtitle">Enter your reset token and create a new password</p>
 
-              {error && (
-                <div className="alert alert-error">
-                  <AlertCircle size={14} strokeWidth={2} />
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <div className="input-with-icon">
-                    <span className="input-icon">
-                      <Mail size={16} strokeWidth={1.5} />
-                    </span>
-                    <input
-                      type="email"
-                      className="form-input"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Reset Token</label>
-                  <textarea
-                    className="form-input"
-                    placeholder="Paste your reset token here"
-                    value={token}
-                    onChange={e => setToken(e.target.value)}
-                    rows="3"
-                    style={{
-                      fontFamily: 'monospace',
-                      fontSize: '11px',
-                      resize: 'vertical',
-                      padding: '8px',
-                    }}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">New Password</label>
-                  <div className="input-with-icon has-right">
-                    <span className="input-icon">
-                      <Lock size={16} strokeWidth={1.5} />
-                    </span>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className="form-input"
-                      placeholder="Create a strong password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      className="input-icon-right"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={loading}
-                    >
-                      {showPassword ? (
-                        <EyeOff size={16} strokeWidth={1.5} />
-                      ) : (
-                        <Eye size={16} strokeWidth={1.5} />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Confirm Password</label>
-                  <div className="input-with-icon has-right">
-                    <span className="input-icon">
-                      <Lock size={16} strokeWidth={1.5} />
-                    </span>
-                    <input
-                      type={showConfirm ? 'text' : 'password'}
-                      className="form-input"
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      className="input-icon-right"
-                      onClick={() => setShowConfirm(!showConfirm)}
-                      disabled={loading}
-                    >
-                      {showConfirm ? (
-                        <EyeOff size={16} strokeWidth={1.5} />
-                      ) : (
-                        <Eye size={16} strokeWidth={1.5} />
-                      )}
-                    </button>
-                  </div>
-                  {passwordsMatch && (
-                    <p style={{ fontSize: '11px', color: 'var(--success-dark)', marginTop: 4 }}>
-                      ✓ Passwords match
-                    </p>
-                  )}
-                </div>
-
+            <div style={{ marginBottom: 24 }}>
+              <label className="form-label">Confirm Password</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  className="form-input"
+                  placeholder="Confirm your new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={{ paddingRight: 40 }}
+                />
                 <button
-                  type="submit"
-                  className="btn btn-primary btn-lg"
-                  style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}
-                  disabled={loading}
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#4B5563',
+                  }}
                 >
-                  {loading ? (
-                    <>
-                      <span className="spinner-sm" /> Resetting...
-                    </>
-                  ) : (
-                    'Reset Password'
-                  )}
+                  {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
-              </form>
-
-              <div
-                className="alert alert-info"
-                style={{ fontSize: '12px', marginTop: 16 }}
-              >
-                <Sparkles size={14} strokeWidth={2} />
-                Password must be at least 6 characters long.
               </div>
-            </>
-          )}
-        </div>
+            </div>
+
+            {message && (
+              <div style={{
+                marginBottom: 16,
+                padding: '12px 16px',
+                borderRadius: 8,
+                background: '#ECFDF5',
+                border: '1px solid #D1FAE5',
+                color: '#065F46',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <CheckCircle size={18} strokeWidth={1.5} />
+                <span>{message}</span>
+              </div>
+            )}
+
+            {error && (
+              <div style={{
+                marginBottom: 16,
+                padding: '12px 16px',
+                borderRadius: 8,
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                color: '#991B1B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <AlertCircle size={18} strokeWidth={1.5} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary"
+              style={{ width: '100%', marginBottom: 12 }}
+            >
+              {loading ? 'Resetting...' : 'Reset Password'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStep(1);
+                setCode('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setMessage('');
+                setError('');
+              }}
+              className="btn btn-outline"
+              style={{ width: '100%' }}
+            >
+              Back to Email
+            </button>
+          </form>
+        )}
+      </div>
+
+      <div style={{
+        marginTop: 24,
+        padding: 16,
+        borderRadius: 8,
+        background: '#EFF6FF',
+        border: '1px solid #DBEAFE',
+        color: '#0C4A6E',
+        fontSize: 13,
+        textAlign: 'center',
+      }}>
+        Remember your password? <a href="/login" style={{ color: '#2563EB', fontWeight: 600 }}>Sign in here</a>
       </div>
     </div>
   );
