@@ -107,14 +107,6 @@ export default function LoginPage({ onSwitch, onBack }) {
               </button>
             ))}
           </div>
-
-          {tab === 'admin' && (
-            <div className="alert alert-info" style={{ fontSize: '12px' }}>
-              <Sparkles size={14} strokeWidth={2} />
-              Default admin: <strong>admin@hospital.com</strong> / <strong>admin123</strong>
-            </div>
-          )}
-
           {error && <div className="alert alert-error">
             <ChevronRight size={14} strokeWidth={2} />
             {error}
