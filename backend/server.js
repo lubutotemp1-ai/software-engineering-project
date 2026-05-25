@@ -5,11 +5,12 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Updated CORS for production (Netlify)
+// Updated CORS for production
 const allowedOrigins = [
   'http://localhost:3000',
-  process.env.FRONTEND_URL || 'https://yourdomain.netlify.app'
-];
+  'https://software-engineering-project-sand.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
 
 app.use(cors({
   origin: allowedOrigins,
