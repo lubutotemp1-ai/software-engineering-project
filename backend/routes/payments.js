@@ -18,29 +18,36 @@ router.get('/plans', async (req, res) => {
       4: { name: 'Max', price: 24.99, ai_diagnosis_limit: 35, health_education_limit: 35 },
     };
     
-    // If no plans exist, initialize with default plans
-    if (plans.length === 0) {
-      for (const [id, plan] of Object.entries(correctPlans)) {
+    // Delete any plans that are not in the correct set
+    for (const plan of plans) {
+      if (!correctPlans[plan.id]) {
+        await db.run_('DELETE FROM plans WHERE id = ?', [plan.id]);
+      }
+    }
+    
+    // Ensure correct plans exist
+    for (const [id, plan] of Object.entries(correctPlans)) {
+      const existing = await db.get_('SELECT * FROM plans WHERE id = ?', [id]);
+      if (existing) {
+        // Update if pricing or limits don't match
+        if (existing.price !== plan.price || existing.ai_diagnosis_limit !== plan.ai_diagnosis_limit || existing.health_education_limit !== plan.health_education_limit) {
+          await db.run_(
+            `UPDATE plans SET name = ?, price = ?, ai_diagnosis_limit = ?, health_education_limit = ? WHERE id = ?`,
+            [plan.name, plan.price, plan.ai_diagnosis_limit, plan.health_education_limit, id]
+          );
+        }
+      } else {
+        // Insert if doesn't exist
         await db.run_(
           `INSERT INTO plans (id, name, price, ai_diagnosis_limit, health_education_limit)
            VALUES (?, ?, ?, ?, ?)`,
           [id, plan.name, plan.price, plan.ai_diagnosis_limit, plan.health_education_limit]
         );
       }
-      plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
-    } else {
-      // Update existing plans to ensure correct pricing
-      for (const plan of plans) {
-        const correct = correctPlans[plan.id];
-        if (correct && (plan.price !== correct.price || plan.ai_diagnosis_limit !== correct.ai_diagnosis_limit || plan.health_education_limit !== correct.health_education_limit)) {
-          await db.run_(
-            `UPDATE plans SET name = ?, price = ?, ai_diagnosis_limit = ?, health_education_limit = ? WHERE id = ?`,
-            [correct.name, correct.price, correct.ai_diagnosis_limit, correct.health_education_limit, plan.id]
-          );
-        }
-      }
-      plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
     }
+    
+    // Return only the 4 correct plans
+    plans = await db.all_('SELECT * FROM plans WHERE id IN (1, 2, 3, 4) ORDER BY price ASC');
     
     res.json(plans);
   } catch (err) {
