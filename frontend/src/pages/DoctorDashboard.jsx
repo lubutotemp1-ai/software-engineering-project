@@ -292,9 +292,11 @@ export default function DoctorDashboard({ onLogout, user }) {
   const navItems = [
     { id: 'overview',     label: 'Overview',      icon: '⬛' },
     { id: 'appointments', label: 'Appointments',   icon: '📅' },
+    { id: 'patients',     label: 'Patients',      icon: '👥' },
     { id: 'schedule',     label: 'My Schedule',    icon: '🗓️' },
     { id: 'messages',     label: 'Messages',       icon: '💬', badge: unreadCount },
     { id: 'diagnoses',    label: 'AI Diagnoses',   icon: '🤖' },
+    { id: 'change-password', label: 'Change Password', icon: '🔒' },
   ];
 
   const filteredConvos = conversations.filter(c =>
@@ -642,6 +644,114 @@ export default function DoctorDashboard({ onLogout, user }) {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── PATIENTS ── */}
+        {activePage === 'patients' && (
+          <div>
+            <div className="page-header"><h1>Patients</h1><p>View and manage your patients</p></div>
+            <div className="card">
+              <div className="table-wrapper">
+                <table>
+                  <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Blood Type</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {appointments.length === 0 ? (
+                      <tr><td colSpan={5}><div className="empty-state"><div className="emoji">👥</div><h3>No patients found</h3><p>Patients will appear here when you have appointments with them</p></div></td></tr>
+                    ) : (() => {
+                      const uniquePatients = new Map();
+                      appointments.forEach(a => {
+                        if (!uniquePatients.has(a.patient_id)) {
+                          uniquePatients.set(a.patient_id, {
+                            id: a.patient_id,
+                            name: a.patient_name,
+                            email: a.patient_email,
+                            phone: a.patient_phone,
+                            blood_type: a.blood_type
+                          });
+                        }
+                      });
+                      return Array.from(uniquePatients.values()).map(p => (
+                        <tr key={p.id}>
+                          <td style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</td>
+                          <td style={{ fontSize: 13 }}>{p.email || '—'}</td>
+                          <td style={{ fontSize: 13 }}>{p.phone || '—'}</td>
+                          <td>{p.blood_type ? <span style={{ background: '#e74c3c', padding: '2px 8px', borderRadius: 12, fontWeight: 700, fontSize: 11, color: 'white' }}>🩸 {p.blood_type}</span> : '—'}</td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              <button className="btn btn-outline btn-sm" onClick={() => viewPatientRecords(p.id)}>Records</button>
+                              <button className="btn btn-primary btn-sm" onClick={() => { startNewChat({ id: p.id, name: p.name, role: 'patient' }); setActivePage('messages'); }}>Message</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── CHANGE PASSWORD ── */}
+        {activePage === 'change-password' && (
+          <div>
+            <div className="page-header"><h1>Change Password</h1><p>Update your account password</p></div>
+            <div className="card" style={{ maxWidth: 500 }}>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const currentPassword = e.target.currentPassword.value;
+                const newPassword = e.target.newPassword.value;
+                const confirmPassword = e.target.confirmPassword.value;
+                
+                if (!currentPassword || !newPassword || !confirmPassword) {
+                  alert('All fields are required.');
+                  return;
+                }
+                if (newPassword !== confirmPassword) {
+                  alert('New passwords do not match.');
+                  return;
+                }
+                if (newPassword.length < 6) {
+                  alert('New password must be at least 6 characters.');
+                  return;
+                }
+                if (currentPassword === newPassword) {
+                  alert('New password must be different from current password.');
+                  return;
+                }
+                
+                try {
+                  await axios.post('/api/auth/change-password', { currentPassword, newPassword });
+                  alert('Password changed successfully!');
+                  e.target.reset();
+                } catch (err) {
+                  alert(err.response?.data?.error || 'Failed to change password.');
+                }
+              }}>
+                <div className="form-group">
+                  <label className="form-label">Current Password</label>
+                  <input type="password" name="currentPassword" className="form-input" placeholder="Enter your current password" required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">New Password</label>
+                  <input type="password" name="newPassword" className="form-input" placeholder="Enter your new password" required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm New Password</label>
+                  <input type="password" name="confirmPassword" className="form-input" placeholder="Confirm your new password" required />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Update Password</button>
+              </form>
+              <div style={{ marginTop: 16, padding: 12, background: '#EFF6FF', borderRadius: 8, fontSize: 12, color: '#0C4A6E' }}>
+                <strong>Password Requirements:</strong>
+                <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                  <li>At least 6 characters long</li>
+                  <li>Different from your current password</li>
+                  <li>Passwords must match</li>
+                </ul>
+              </div>
+            </div>
           </div>
         )}
 
