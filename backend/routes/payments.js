@@ -100,35 +100,36 @@ router.get('/ai-usage', authMiddleware, async (req, res) => {
 
 // POST /api/payments/create-checkout-session - Create Stripe checkout session
 router.post('/create-checkout-session', authMiddleware, async (req, res) => {
-  const { plan_id, plan_name, plan_price, ai_diagnosis_limit, health_education_limit } = req.body;
+  const { plan_id } = req.body;
   
   try {
     const user = await db.get_('SELECT * FROM users WHERE id = $1', [req.user.id]);
     
+    // Get plan details from hardcoded plans (matching frontend)
+    const planLimits = {
+      1: { name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
+      2: { name: 'Pro', price: 24.99, ai_diagnosis_limit: 50, health_education_limit: 100 },
+      3: { name: 'Plus', price: 74.99, ai_diagnosis_limit: 150, health_education_limit: 300 },
+      4: { name: 'Max', price: 119.99, ai_diagnosis_limit: 500, health_education_limit: 1000 },
+    };
+    
+    const plan = planLimits[plan_id];
+    if (!plan) {
+      return res.status(400).json({ error: 'Invalid plan ID.' });
+    }
+    
     // Validate and convert price to integer cents
-    const priceNum = parseFloat(plan_price);
-    console.log('Received plan_price:', plan_price, 'Parsed:', priceNum);
+    const priceInCents = Math.round(plan.price * 100);
     
-    if (isNaN(priceNum) || priceNum < 0) {
-      return res.status(400).json({ error: 'Invalid price format.' });
-    }
-    
-    const priceInCents = Math.round(priceNum * 100);
-    console.log('Price in cents:', priceInCents);
-    
-    if (priceInCents < 50 && priceInCents !== 0) {
-      return res.status(400).json({ error: 'Invalid price. Price must be at least $0.50.' });
-    }
-    
-    // Create Stripe session with plan details from frontend
+    // Create Stripe session with plan details
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
           currency: 'usd',
           product_data: {
-            name: plan_name,
-            description: `${ai_diagnosis_limit} AI Diagnosis uses + ${health_education_limit} Health Education uses`,
+            name: plan.name,
+            description: `${plan.ai_diagnosis_limit} AI Diagnosis uses + ${plan.health_education_limit} Health Education uses`,
           },
           unit_amount: priceInCents,
           recurring: {
@@ -144,7 +145,7 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
       metadata: {
         user_id: req.user.id,
         plan_id: plan_id,
-        plan_name: plan_name,
+        plan_name: plan.name,
       },
     });
 

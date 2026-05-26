@@ -33,22 +33,8 @@ export default function SubscriptionPage() {
   const handleSubscribe = async (planId) => {
     setCheckoutLoading(true);
     try {
-      const plan = plans.find(p => p.id === planId);
-      console.log('Plan ID:', planId, 'Found plan:', plan);
-      console.log('All plans:', plans);
-      
-      if (!plan) {
-        alert('Plan not found');
-        setCheckoutLoading(false);
-        return;
-      }
-      
       const res = await axios.post('/api/payments/create-checkout-session', {
         plan_id: planId,
-        plan_name: plan.name,
-        plan_price: plan.price,
-        ai_diagnosis_limit: plan.ai_diagnosis_limit,
-        health_education_limit: plan.health_education_limit,
       });
       if (res.data.url) {
         window.location.href = res.data.url;
