@@ -18,9 +18,9 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
   const [scrollY, setScrollY] = useState(0);
   const [plans, setPlans] = useState([
     { id: 1, name: 'Free', price: 0, diagnosis: 7, education: 10 },
-    { id: 2, name: 'Pro', price: 25, diagnosis: 50, education: 100 },
-    { id: 3, name: 'Plus', price: 75, diagnosis: 150, education: 300 },
-    { id: 4, name: 'Max', price: 120, diagnosis: 500, education: 1000 },
+    { id: 2, name: 'Pro', price: 24.99, diagnosis: 50, education: 100 },
+    { id: 3, name: 'Plus', price: 74.99, diagnosis: 150, education: 300 },
+    { id: 4, name: 'Max', price: 119.99, diagnosis: 500, education: 1000 },
   ]);
 
   useEffect(() => {
@@ -312,7 +312,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = 'none'; }}>
             <div style={{ position: 'absolute', top: '-12px', left: '20px', background: 'linear-gradient(90deg, #3B82F6, #60A5FA)', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MOST POPULAR</div>
             <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px', marginTop: '8px' }}>Pro Plan</div>
-            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$25<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$24.99<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
             <div style={{ space: '16px', marginBottom: '24px' }}>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 50 AI Diagnosis uses</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 100 Health Education uses</div>
@@ -340,7 +340,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
             <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Plus Plan</div>
-            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$75<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$74.99<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
             <div style={{ space: '16px', marginBottom: '24px' }}>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 150 AI Diagnosis uses</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 300 Health Education uses</div>
@@ -368,7 +368,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
             <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Max Plan</div>
-            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$120<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$119.99<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
             <div style={{ space: '16px', marginBottom: '24px' }}>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 500 AI Diagnosis uses</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 1000 Health Education uses</div>

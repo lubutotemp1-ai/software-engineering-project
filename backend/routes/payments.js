@@ -168,9 +168,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         // Get plan limits based on plan name
         const planLimits = {
           'Free': { ai_diagnosis_limit: 7, health_education_limit: 10, price: 0 },
-          'Pro': { ai_diagnosis_limit: 50, health_education_limit: 100, price: 25 },
-          'Plus': { ai_diagnosis_limit: 150, health_education_limit: 300, price: 75 },
-          'Max': { ai_diagnosis_limit: 500, health_education_limit: 1000, price: 120 },
+          'Pro': { ai_diagnosis_limit: 50, health_education_limit: 100, price: 24.99 },
+          'Plus': { ai_diagnosis_limit: 150, health_education_limit: 300, price: 74.99 },
+          'Max': { ai_diagnosis_limit: 500, health_education_limit: 1000, price: 119.99 },
         }[plan_name] || { ai_diagnosis_limit: 7, health_education_limit: 10, price: 0 };
 
         // Ensure plan exists in database
