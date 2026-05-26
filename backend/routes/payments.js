@@ -10,23 +10,35 @@ router.get('/plans', async (req, res) => {
   try {
     let plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
     
+    // Define correct plan pricing
+    const correctPlans = {
+      1: { name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
+      2: { name: 'Pro', price: 24.99, ai_diagnosis_limit: 50, health_education_limit: 100 },
+      3: { name: 'Plus', price: 74.99, ai_diagnosis_limit: 150, health_education_limit: 300 },
+      4: { name: 'Max', price: 119.99, ai_diagnosis_limit: 500, health_education_limit: 1000 },
+    };
+    
     // If no plans exist, initialize with default plans
     if (plans.length === 0) {
-      const defaultPlans = [
-        { id: 1, name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
-        { id: 2, name: 'Pro', price: 24.99, ai_diagnosis_limit: 50, health_education_limit: 100 },
-        { id: 3, name: 'Plus', price: 74.99, ai_diagnosis_limit: 150, health_education_limit: 300 },
-        { id: 4, name: 'Max', price: 119.99, ai_diagnosis_limit: 500, health_education_limit: 1000 },
-      ];
-      
-      for (const plan of defaultPlans) {
+      for (const [id, plan] of Object.entries(correctPlans)) {
         await db.run_(
           `INSERT INTO plans (id, name, price, ai_diagnosis_limit, health_education_limit)
            VALUES (?, ?, ?, ?, ?)`,
-          [plan.id, plan.name, plan.price, plan.ai_diagnosis_limit, plan.health_education_limit]
+          [id, plan.name, plan.price, plan.ai_diagnosis_limit, plan.health_education_limit]
         );
       }
-      
+      plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
+    } else {
+      // Update existing plans to ensure correct pricing
+      for (const plan of plans) {
+        const correct = correctPlans[plan.id];
+        if (correct && (plan.price !== correct.price || plan.ai_diagnosis_limit !== correct.ai_diagnosis_limit || plan.health_education_limit !== correct.health_education_limit)) {
+          await db.run_(
+            `UPDATE plans SET name = ?, price = ?, ai_diagnosis_limit = ?, health_education_limit = ? WHERE id = ?`,
+            [correct.name, correct.price, correct.ai_diagnosis_limit, correct.health_education_limit, plan.id]
+          );
+        }
+      }
       plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
     }
     
