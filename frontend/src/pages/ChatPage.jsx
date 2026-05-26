@@ -426,7 +426,7 @@ export default function ChatPage() {
               </div>
 
               {/* Input */}
-              <div className="chat-input-row" style={{ padding: '12px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: '#ffffff', position: 'relative', zIndex: 10, flexShrink: 0 }}>
+              <div className="chat-input-row" style={{ padding: '12px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: '#ffffff', position: 'relative', zIndex: 10, flexShrink: 0, minHeight: 64 }}>
                 <textarea
                   className="chat-input"
                   rows={1}
@@ -434,7 +434,7 @@ export default function ChatPage() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKey}
-                  style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#000000', maxHeight: 120 }}
+                  style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '10px 14px', fontSize: 14, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#000000', maxHeight: 120, minHeight: 44 }}
                 />
                 <button
                   onClick={sendMessage}
@@ -442,12 +442,12 @@ export default function ChatPage() {
                   type="button"
                   title="Send message"
                   style={{
-                    width: 40, height: 40, borderRadius: '50%', border: 'none',
+                    width: 44, height: 44, borderRadius: '50%', border: 'none',
                     background: input.trim() ? '#2563EB' : '#E5E7EB',
                     color: input.trim() ? '#ffffff' : '#4B5563',
                     fontSize: 16, cursor: input.trim() ? 'pointer' : 'default',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, transition: 'all 0.2s', position: 'relative', zIndex: 11,
+                    flexShrink: 0, transition: 'all 0.2s', position: 'relative', zIndex: 11, minWidth: 44, minHeight: 44,
                   }}>
                   {sending ? '…' : <Send size={18} strokeWidth={2} />}
                 </button>

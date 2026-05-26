@@ -67,6 +67,9 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
             description: `${plan.ai_diagnosis_limit} AI Diagnosis uses + ${plan.health_education_limit} Health Education uses`,
           },
           unit_amount: Math.round(plan.price * 100),
+          recurring: {
+            interval: 'month',
+          },
         },
         quantity: 1,
       }],
