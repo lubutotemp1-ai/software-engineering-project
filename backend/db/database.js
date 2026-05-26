@@ -15,7 +15,7 @@ if (dbType === 'sqlite') {
   // Use PostgreSQL for production
   const { Pool } = require('pg');
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://healthportal_user:BrbR3sKAExnna4ROBpA8obkLXVVHQcYZ@dpg-d87lpgojs32c73ef6lo0-a.oregon-postgres.render.com/healthportal',
+    connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   });
 
