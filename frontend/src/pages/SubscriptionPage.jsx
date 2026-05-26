@@ -5,7 +5,12 @@ import { Crown, Check, ArrowRight, Loader } from 'lucide-react';
 
 export default function SubscriptionPage() {
   const { user } = useAuth();
-  const [plans, setPlans] = useState([]);
+  const [plans] = useState([
+    { id: 1, name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
+    { id: 2, name: 'Pro', price: 25, ai_diagnosis_limit: 50, health_education_limit: 100 },
+    { id: 3, name: 'Plus', price: 75, ai_diagnosis_limit: 150, health_education_limit: 300 },
+    { id: 4, name: 'Max', price: 120, ai_diagnosis_limit: 500, health_education_limit: 1000 },
+  ]);
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -16,11 +21,7 @@ export default function SubscriptionPage() {
 
   const fetchData = async () => {
     try {
-      const [plansRes, subRes] = await Promise.all([
-        axios.get('/api/payments/plans'),
-        axios.get('/api/payments/subscription'),
-      ]);
-      setPlans(plansRes.data);
+      const subRes = await axios.get('/api/payments/subscription');
       setCurrentSubscription(subRes.data);
     } catch (err) {
       console.error('Failed to fetch subscription data:', err);
@@ -83,9 +84,44 @@ export default function SubscriptionPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
         {plans.map((plan) => {
-          const isCurrent = currentSubscription?.plan_id === plan.id;
-          const isPopular = plan.name === 'Premium';
-          
+          const isCurrent = currentSubscription?.name === plan.name;
+          const isPopular = plan.name === 'Pro';
+
+          const getFeatures = (planName) => {
+            switch (planName) {
+              case 'Free':
+                return [
+                  '7 AI Diagnosis uses',
+                  '10 Health Education uses',
+                  'Basic health tracking',
+                  'Limited appointments',
+                ];
+              case 'Pro':
+                return [
+                  '50 AI Diagnosis uses',
+                  '100 Health Education uses',
+                  'Full health tracking',
+                  'Unlimited appointments',
+                ];
+              case 'Plus':
+                return [
+                  '150 AI Diagnosis uses',
+                  '300 Health Education uses',
+                  'Priority support',
+                  'Advanced analytics',
+                ];
+              case 'Max':
+                return [
+                  '500 AI Diagnosis uses',
+                  '1000 Health Education uses',
+                  '24/7 Premium support',
+                  'Dedicated account manager',
+                ];
+              default:
+                return [];
+            }
+          };
+
           return (
             <div
               key={plan.id}
@@ -94,20 +130,21 @@ export default function SubscriptionPage() {
                 background: 'white',
                 borderRadius: 16,
                 padding: 24,
-                border: isCurrent ? '2px solid #10B981' : isPopular ? '2px solid #F59E0B' : '1px solid #E5E7EB',
-                boxShadow: isPopular ? '0 8px 24px rgba(245, 158, 11, 0.15)' : '0 2px 8px rgba(0, 0, 0, 0.05)',
+                border: isCurrent ? '2px solid #10B981' : isPopular ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                boxShadow: isPopular ? '0 8px 24px rgba(59, 130, 246, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.05)',
                 transition: 'all 0.3s',
+                transform: isPopular ? 'scale(1.05)' : 'none',
               }}
               onMouseEnter={(e) => {
                 if (!isCurrent) {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = isPopular ? 'scale(1.05) translateY(-4px)' : 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = isPopular ? '0 12px 50px rgba(59, 130, 246, 0.4)' : '0 12px 32px rgba(0, 0, 0, 0.1)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isCurrent) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = isPopular ? '0 8px 24px rgba(245, 158, 11, 0.15)' : '0 2px 8px rgba(0, 0, 0, 0.05)';
+                  e.currentTarget.style.transform = isPopular ? 'scale(1.05)' : 'translateY(0)';
+                  e.currentTarget.style.boxShadow = isPopular ? '0 8px 24px rgba(59, 130, 246, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.05)';
                 }
               }}
             >
@@ -115,13 +152,12 @@ export default function SubscriptionPage() {
                 <div style={{
                   position: 'absolute',
                   top: -12,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: '#F59E0B',
+                  left: '20px',
+                  background: 'linear-gradient(90deg, #3B82F6, #60A5FA)',
                   color: 'white',
-                  padding: '4px 16px',
+                  padding: '4px 12px',
                   borderRadius: 20,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -147,57 +183,39 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
-              <div style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: '#111827' }}>{plan.name}</h3>
+              <div style={{ marginBottom: 20, marginTop: isPopular ? 8 : 0 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: '#111827' }}>{plan.name} Plan</h3>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontSize: 36, fontWeight: 800, color: '#111827' }}>${plan.price}</span>
-                  <span style={{ fontSize: 14, color: '#6B7280' }}>/month</span>
+                  <span style={{ fontSize: 32, fontWeight: 800, color: '#111827' }}>${plan.price}</span>
+                  <span style={{ fontSize: 16, fontWeight: 500, color: '#6B7280' }}>/mo</span>
                 </div>
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 12 }}>Features:</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Check size={16} color="#10B981" strokeWidth={2} />
-                    <span style={{ fontSize: 13, color: '#4B5563' }}>{plan.ai_diagnosis_limit} AI Diagnosis uses/month</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Check size={16} color="#10B981" strokeWidth={2} />
-                    <span style={{ fontSize: 13, color: '#4B5563' }}>{plan.health_education_limit} Health Education uses/month</span>
-                  </div>
-                  {plan.name === 'Premium' && (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Check size={16} color="#10B981" strokeWidth={2} />
-                        <span style={{ fontSize: 13, color: '#4B5563' }}>Priority support</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Check size={16} color="#10B981" strokeWidth={2} />
-                        <span style={{ fontSize: 13, color: '#4B5563' }}>Advanced health analytics</span>
-                      </div>
-                    </>
-                  )}
-                  {plan.name === 'Basic' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {getFeatures(plan.name).map((feature, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Check size={16} color="#10B981" strokeWidth={2} />
-                      <span style={{ fontSize: 13, color: '#4B5563' }}>Standard features</span>
+                      <span style={{ fontSize: 14, color: '#4B5563' }}>{feature}</span>
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
 
               <button
                 onClick={() => handleSubscribe(plan.id)}
-                disabled={isCurrent || checkoutLoading}
+                disabled={isCurrent || checkoutLoading || plan.price === 0}
                 className="btn"
                 style={{
                   width: '100%',
-                  background: isCurrent ? '#E5E7EB' : (isPopular ? '#F59E0B' : '#2563EB'),
+                  background: isCurrent ? '#E5E7EB' : (plan.price === 0 ? 'transparent' : (isPopular ? 'linear-gradient(90deg, #3B82F6, #60A5FA)' : '#2563EB')),
                   color: isCurrent ? '#6B7280' : 'white',
-                  border: 'none',
-                  cursor: isCurrent ? 'not-allowed' : 'pointer',
+                  border: plan.price === 0 ? '1px solid rgba(255,255,255,0.5)' : 'none',
+                  cursor: (isCurrent || checkoutLoading || plan.price === 0) ? 'not-allowed' : 'pointer',
                   opacity: isCurrent ? 0.7 : 1,
+                  padding: '12px 24px',
+                  borderRadius: '50px',
+                  fontWeight: 600,
                 }}
               >
                 {checkoutLoading ? (
@@ -207,6 +225,8 @@ export default function SubscriptionPage() {
                   </span>
                 ) : isCurrent ? (
                   'Current Plan'
+                ) : plan.price === 0 ? (
+                  'Get Started'
                 ) : (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     Subscribe <ArrowRight size={16} />
