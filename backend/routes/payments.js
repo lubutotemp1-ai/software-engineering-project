@@ -13,9 +13,9 @@ router.get('/plans', async (req, res) => {
     // Define correct plan pricing
     const correctPlans = {
       1: { name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
-      2: { name: 'Pro', price: 24.99, ai_diagnosis_limit: 15, health_education_limit: 15 },
-      3: { name: 'Plus', price: 74.99, ai_diagnosis_limit: 25, health_education_limit: 25 },
-      4: { name: 'Max', price: 119.99, ai_diagnosis_limit: 35, health_education_limit: 35 },
+      2: { name: 'Pro', price: 9.99, ai_diagnosis_limit: 15, health_education_limit: 15 },
+      3: { name: 'Plus', price: 14.99, ai_diagnosis_limit: 25, health_education_limit: 25 },
+      4: { name: 'Max', price: 24.99, ai_diagnosis_limit: 35, health_education_limit: 35 },
     };
     
     // If no plans exist, initialize with default plans
@@ -204,9 +204,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         // Get plan limits based on plan name
         const planLimits = {
           'Free': { ai_diagnosis_limit: 7, health_education_limit: 10, price: 0 },
-          'Pro': { ai_diagnosis_limit: 15, health_education_limit: 15, price: 24.99 },
-          'Plus': { ai_diagnosis_limit: 25, health_education_limit: 25, price: 74.99 },
-          'Max': { ai_diagnosis_limit: 35, health_education_limit: 35, price: 119.99 },
+          'Pro': { ai_diagnosis_limit: 15, health_education_limit: 15, price: 9.99 },
+          'Plus': { ai_diagnosis_limit: 25, health_education_limit: 25, price: 14.99 },
+          'Max': { ai_diagnosis_limit: 35, health_education_limit: 35, price: 24.99 },
         }[plan_name] || { ai_diagnosis_limit: 7, health_education_limit: 10, price: 0 };
 
         // Ensure plan exists in database
