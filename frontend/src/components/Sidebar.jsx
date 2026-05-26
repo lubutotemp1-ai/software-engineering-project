@@ -22,7 +22,7 @@ export default function Sidebar({ activePage, setActivePage }) {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [aiUsage, setAiUsage] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
