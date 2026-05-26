@@ -16,7 +16,7 @@ router.post('/check', checkAIUsageLimit, async (req, res) => {
     }
 
     const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
 
     const prompt = `You are a medical AI assistant in a hospital portal helping patients with preliminary health assessments.
 A patient has described their symptoms. Provide a clear, empathetic, plain-text response (no markdown, no bullet symbols, just clean paragraphs).
