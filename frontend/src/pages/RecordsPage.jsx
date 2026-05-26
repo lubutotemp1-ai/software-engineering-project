@@ -190,7 +190,7 @@ export default function RecordsPage() {
                 </table>
               </div>
             )}
-          )}
+          </div>
         </div>
       </div>
     </div>
