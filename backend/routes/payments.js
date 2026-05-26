@@ -105,6 +105,12 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
   try {
     const user = await db.get_('SELECT * FROM users WHERE id = $1', [req.user.id]);
     
+    // Validate and convert price to integer cents
+    const priceInCents = Math.round(parseFloat(plan_price) * 100);
+    if (isNaN(priceInCents) || priceInCents < 50) {
+      return res.status(400).json({ error: 'Invalid price. Price must be at least $0.50.' });
+    }
+    
     // Create Stripe session with plan details from frontend
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -115,7 +121,7 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
             name: plan_name,
             description: `${ai_diagnosis_limit} AI Diagnosis uses + ${health_education_limit} Health Education uses`,
           },
-          unit_amount: Math.round(plan_price * 100),
+          unit_amount: priceInCents,
           recurring: {
             interval: 'month',
           },
