@@ -48,25 +48,22 @@ router.get('/subscription', authMiddleware, async (req, res) => {
 
 // POST /api/payments/create-checkout-session - Create Stripe checkout session
 router.post('/create-checkout-session', authMiddleware, async (req, res) => {
-  const { plan_id } = req.body;
+  const { plan_id, plan_name, plan_price, ai_diagnosis_limit, health_education_limit } = req.body;
   
   try {
-    const plan = await db.get_('SELECT * FROM plans WHERE id = $1', [plan_id]);
-    if (!plan) return res.status(404).json({ error: 'Plan not found.' });
-
     const user = await db.get_('SELECT * FROM users WHERE id = $1', [req.user.id]);
     
-    // Create Stripe session
+    // Create Stripe session with plan details from frontend
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
           currency: 'usd',
           product_data: {
-            name: plan.name,
-            description: `${plan.ai_diagnosis_limit} AI Diagnosis uses + ${plan.health_education_limit} Health Education uses`,
+            name: plan_name,
+            description: `${ai_diagnosis_limit} AI Diagnosis uses + ${health_education_limit} Health Education uses`,
           },
-          unit_amount: Math.round(plan.price * 100),
+          unit_amount: Math.round(plan_price * 100),
           recurring: {
             interval: 'month',
           },
@@ -80,6 +77,7 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
       metadata: {
         user_id: req.user.id,
         plan_id: plan_id,
+        plan_name: plan_name,
       },
     });
 

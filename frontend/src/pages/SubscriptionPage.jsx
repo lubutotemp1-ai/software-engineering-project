@@ -33,7 +33,14 @@ export default function SubscriptionPage() {
   const handleSubscribe = async (planId) => {
     setCheckoutLoading(true);
     try {
-      const res = await axios.post('/api/payments/create-checkout-session', { plan_id: planId });
+      const plan = plans.find(p => p.id === planId);
+      const res = await axios.post('/api/payments/create-checkout-session', {
+        plan_id: planId,
+        plan_name: plan.name,
+        plan_price: plan.price,
+        ai_diagnosis_limit: plan.ai_diagnosis_limit,
+        health_education_limit: plan.health_education_limit,
+      });
       if (res.data.url) {
         window.location.href = res.data.url;
       }
