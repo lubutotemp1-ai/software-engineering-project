@@ -3,6 +3,7 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const db = require('../db/database');
 const authMiddleware = require('../middleware/auth');
+const { checkAIUsageLimit, recordAIUsage } = require('../middleware/aiLimits');
 
 // GET /api/payments/plans - Get all available plans
 router.get('/plans', async (req, res) => {
@@ -43,6 +44,57 @@ router.get('/subscription', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch subscription.' });
+  }
+});
+
+// GET /api/payments/ai-usage - Get current user's AI usage
+router.get('/ai-usage', authMiddleware, async (req, res) => {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get subscription limits
+    const subscription = await db.get_(
+      `SELECT p.ai_diagnosis_limit, p.health_education_limit, p.name as plan_name
+       FROM subscriptions s
+       JOIN plans p ON s.plan_id = p.id
+       WHERE s.user_id = $1`,
+      [req.user.id]
+    );
+
+    const diagnosisLimit = subscription?.ai_diagnosis_limit || 7;
+    const educationLimit = subscription?.health_education_limit || 10;
+
+    // Get current usage
+    const diagnosisUsage = await db.get_(
+      `SELECT COALESCE(SUM(usage_count), 0) as total FROM ai_usage 
+       WHERE user_id = $1 AND service_type = 'diagnosis' AND period_start >= $2`,
+      [req.user.id, monthStart.toISOString()]
+    );
+
+    const educationUsage = await db.get_(
+      `SELECT COALESCE(SUM(usage_count), 0) as total FROM ai_usage 
+       WHERE user_id = $1 AND service_type = 'education' AND period_start >= $2`,
+      [req.user.id, monthStart.toISOString()]
+    );
+
+    res.json({
+      plan: subscription?.plan_name || 'Free',
+      diagnosis: {
+        used: diagnosisUsage?.total || 0,
+        limit: diagnosisLimit,
+        remaining: Math.max(0, diagnosisLimit - (diagnosisUsage?.total || 0))
+      },
+      education: {
+        used: educationUsage?.total || 0,
+        limit: educationLimit,
+        remaining: Math.max(0, educationLimit - (educationUsage?.total || 0))
+      },
+      billingPeriodStart: monthStart.toISOString()
+    });
+  } catch (err) {
+    console.error('Error getting AI usage:', err);
+    res.status(500).json({ error: 'Failed to fetch AI usage.' });
   }
 });
 
@@ -105,7 +157,27 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        const { user_id, plan_id } = session.metadata;
+        const { user_id, plan_id, plan_name } = session.metadata;
+
+        // Get plan limits based on plan name
+        const planLimits = {
+          'Free': { ai_diagnosis_limit: 7, health_education_limit: 10, price: 0 },
+          'Pro': { ai_diagnosis_limit: 50, health_education_limit: 100, price: 25 },
+          'Plus': { ai_diagnosis_limit: 150, health_education_limit: 300, price: 75 },
+          'Max': { ai_diagnosis_limit: 500, health_education_limit: 1000, price: 120 },
+        }[plan_name] || { ai_diagnosis_limit: 7, health_education_limit: 10, price: 0 };
+
+        // Ensure plan exists in database
+        await db.run_(
+          `INSERT INTO plans (id, name, price, ai_diagnosis_limit, health_education_limit)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET
+           name = excluded.name,
+           price = excluded.price,
+           ai_diagnosis_limit = excluded.ai_diagnosis_limit,
+           health_education_limit = excluded.health_education_limit`,
+          [plan_id, plan_name, planLimits.price, planLimits.ai_diagnosis_limit, planLimits.health_education_limit]
+        );
 
         // Create or update subscription
         const now = new Date();
@@ -118,10 +190,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         );
 
         // Update user subscription plan
-        const plan = await db.get_('SELECT name FROM plans WHERE id = ?', [plan_id]);
         await db.run_(
           'UPDATE users SET subscription_plan = ? WHERE id = ?',
-          [plan.name, user_id]
+          [plan_name, user_id]
         );
 
         break;

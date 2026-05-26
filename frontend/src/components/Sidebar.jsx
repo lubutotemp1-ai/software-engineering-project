@@ -21,6 +21,7 @@ import hospitalSvg from '../images/hospital-svgrepo-com (1).svg';
 export default function Sidebar({ activePage, setActivePage }) {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [aiUsage, setAiUsage] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -38,14 +39,18 @@ export default function Sidebar({ activePage, setActivePage }) {
   }, []);
 
   useEffect(() => {
-    const fetchUnread = async () => {
+    const fetchData = async () => {
       try {
-        const res = await axios.get('/api/chat/unread-count');
-        setUnreadCount(res.data.count);
+        const [unreadRes, aiRes] = await Promise.all([
+          axios.get('/api/chat/unread-count'),
+          axios.get('/api/payments/ai-usage'),
+        ]);
+        setUnreadCount(unreadRes.data.count);
+        setAiUsage(aiRes.data);
       } catch {}
     };
-    fetchUnread();
-    const iv = setInterval(fetchUnread, 30000);
+    fetchData();
+    const iv = setInterval(fetchData, 30000);
     return () => clearInterval(iv);
   }, []);
 
@@ -53,9 +58,9 @@ export default function Sidebar({ activePage, setActivePage }) {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'appointments', label: 'Appointments', icon: Calendar },
     { id: 'health', label: 'Health Tracker', icon: HeartPulse },
-    { id: 'diagnosis', label: 'AI Diagnosis', icon: Bot },
+    { id: 'diagnosis', label: 'AI Diagnosis', icon: Bot, badge: aiUsage ? `${aiUsage.diagnosis.used}/${aiUsage.diagnosis.limit}` : null },
     { id: 'chat', label: 'Messages', icon: MessagesSquare, badge: unreadCount },
-    { id: 'education', label: 'Health Education', icon: BookOpen },
+    { id: 'education', label: 'Health Education', icon: BookOpen, badge: aiUsage ? `${aiUsage.education.used}/${aiUsage.education.limit}` : null },
     { id: 'records', label: 'Records', icon: FileText },
     { id: 'subscription', label: 'Subscription', icon: Crown },
     { id: 'change-password', label: 'Change Password', icon: Lock },
