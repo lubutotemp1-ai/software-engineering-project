@@ -426,7 +426,7 @@ export default function ChatPage() {
               </div>
 
               {/* Input */}
-              <div className="chat-input-row" style={{ padding: '12px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: '#ffffff', position: 'relative', zIndex: 10 }}>
+              <div className="chat-input-row" style={{ padding: '12px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: '#ffffff', position: 'relative', zIndex: 10, flexShrink: 0 }}>
                 <textarea
                   className="chat-input"
                   rows={1}
@@ -434,7 +434,7 @@ export default function ChatPage() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKey}
-                  style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#000000' }}
+                  style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#000000', maxHeight: 120 }}
                 />
                 <button
                   onClick={sendMessage}

@@ -513,12 +513,12 @@ export default function AdminDashboard({ user, onLogout }) {
                       })}
                       <div ref={messagesEndRef} />
                     </div>
-                    <div style={{ padding: '10px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: 'white' }}>
+                    <div style={{ padding: '10px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 10, alignItems: 'flex-end', background: 'white', position: 'relative', zIndex: 10 }}>
                       <textarea rows={1} placeholder={`Message ${selectedChat.other_user_name}...`}
                         value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={handleChatKey}
-                        style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1.5px solid #E5E7EB', outline: 'none', fontFamily: 'inherit' }} />
+                        style={{ flex: 1, resize: 'none', borderRadius: 20, padding: '9px 16px', fontSize: 13.5, border: '1.5px solid #E5E7EB', outline: 'none', fontFamily: 'inherit', maxHeight: 120 }} />
                       <button onClick={sendChatMessage} disabled={!chatInput.trim() || chatSending}
-                        style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: chatInput.trim() ? '#2563EB' : '#D1D5DB', color: 'white', fontSize: 16, cursor: chatInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s' }}>
+                        style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: chatInput.trim() ? '#2563EB' : '#D1D5DB', color: 'white', fontSize: 16, cursor: chatInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s', position: 'relative', zIndex: 11 }}>
                         {chatSending ? '…' : '↑'}
                       </button>
                     </div>
