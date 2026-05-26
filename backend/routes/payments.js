@@ -107,7 +107,7 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
     
     // Validate and convert price to integer cents
     const priceInCents = Math.round(parseFloat(plan_price) * 100);
-    if (isNaN(priceInCents) || priceInCents < 50) {
+    if (isNaN(priceInCents) || (priceInCents < 50 && priceInCents !== 0)) {
       return res.status(400).json({ error: 'Invalid price. Price must be at least $0.50.' });
     }
     
