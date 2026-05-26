@@ -8,7 +8,28 @@ const { checkAIUsageLimit, recordAIUsage } = require('../middleware/aiLimits');
 // GET /api/payments/plans - Get all available plans
 router.get('/plans', async (req, res) => {
   try {
-    const plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
+    let plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
+    
+    // If no plans exist, initialize with default plans
+    if (plans.length === 0) {
+      const defaultPlans = [
+        { id: 1, name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
+        { id: 2, name: 'Pro', price: 24.99, ai_diagnosis_limit: 50, health_education_limit: 100 },
+        { id: 3, name: 'Plus', price: 74.99, ai_diagnosis_limit: 150, health_education_limit: 300 },
+        { id: 4, name: 'Max', price: 119.99, ai_diagnosis_limit: 500, health_education_limit: 1000 },
+      ];
+      
+      for (const plan of defaultPlans) {
+        await db.run_(
+          `INSERT INTO plans (id, name, price, ai_diagnosis_limit, health_education_limit)
+           VALUES (?, ?, ?, ?, ?)`,
+          [plan.id, plan.name, plan.price, plan.ai_diagnosis_limit, plan.health_education_limit]
+        );
+      }
+      
+      plans = await db.all_('SELECT * FROM plans ORDER BY price ASC');
+    }
+    
     res.json(plans);
   } catch (err) {
     console.error(err);
@@ -105,15 +126,8 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
   try {
     const user = await db.get_('SELECT * FROM users WHERE id = $1', [req.user.id]);
     
-    // Get plan details from hardcoded plans (matching frontend)
-    const planLimits = {
-      1: { name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
-      2: { name: 'Pro', price: 24.99, ai_diagnosis_limit: 50, health_education_limit: 100 },
-      3: { name: 'Plus', price: 74.99, ai_diagnosis_limit: 150, health_education_limit: 300 },
-      4: { name: 'Max', price: 119.99, ai_diagnosis_limit: 500, health_education_limit: 1000 },
-    };
-    
-    const plan = planLimits[plan_id];
+    // Get plan details from database
+    const plan = await db.get_('SELECT * FROM plans WHERE id = $1', [plan_id]);
     if (!plan) {
       return res.status(400).json({ error: 'Invalid plan ID.' });
     }
@@ -121,7 +135,7 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
     // Validate and convert price to integer cents
     const priceInCents = Math.round(plan.price * 100);
     
-    // Create Stripe session with plan details
+    // Create Stripe session with plan details from database
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{

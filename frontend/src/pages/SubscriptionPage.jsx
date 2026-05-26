@@ -5,12 +5,7 @@ import { Crown, Check, ArrowRight, Loader } from 'lucide-react';
 
 export default function SubscriptionPage() {
   const { user } = useAuth();
-  const [plans] = useState([
-    { id: 1, name: 'Free', price: 0, ai_diagnosis_limit: 7, health_education_limit: 10 },
-    { id: 2, name: 'Pro', price: 24.99, ai_diagnosis_limit: 50, health_education_limit: 100 },
-    { id: 3, name: 'Plus', price: 74.99, ai_diagnosis_limit: 150, health_education_limit: 300 },
-    { id: 4, name: 'Max', price: 119.99, ai_diagnosis_limit: 500, health_education_limit: 1000 },
-  ]);
+  const [plans, setPlans] = useState([]);
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -21,7 +16,11 @@ export default function SubscriptionPage() {
 
   const fetchData = async () => {
     try {
-      const subRes = await axios.get('/api/payments/subscription');
+      const [plansRes, subRes] = await Promise.all([
+        axios.get('/api/payments/plans'),
+        axios.get('/api/payments/subscription'),
+      ]);
+      setPlans(plansRes.data);
       setCurrentSubscription(subRes.data);
     } catch (err) {
       console.error('Failed to fetch subscription data:', err);

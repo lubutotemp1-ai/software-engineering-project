@@ -22,6 +22,29 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
     { id: 3, name: 'Plus', price: 74.99, diagnosis: 150, education: 300 },
     { id: 4, name: 'Max', price: 119.99, diagnosis: 500, education: 1000 },
   ]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const res = await axios.get('/api/payments/plans');
+        if (res.data && res.data.length > 0) {
+          setPlans(res.data.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            diagnosis: p.ai_diagnosis_limit,
+            education: p.health_education_limit,
+          })));
+        }
+      } catch (err) {
+        console.error('Failed to fetch plans, using defaults:', err);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
