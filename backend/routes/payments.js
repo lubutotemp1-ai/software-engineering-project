@@ -106,8 +106,17 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
     const user = await db.get_('SELECT * FROM users WHERE id = $1', [req.user.id]);
     
     // Validate and convert price to integer cents
-    const priceInCents = Math.round(parseFloat(plan_price) * 100);
-    if (isNaN(priceInCents) || (priceInCents < 50 && priceInCents !== 0)) {
+    const priceNum = parseFloat(plan_price);
+    console.log('Received plan_price:', plan_price, 'Parsed:', priceNum);
+    
+    if (isNaN(priceNum) || priceNum < 0) {
+      return res.status(400).json({ error: 'Invalid price format.' });
+    }
+    
+    const priceInCents = Math.round(priceNum * 100);
+    console.log('Price in cents:', priceInCents);
+    
+    if (priceInCents < 50 && priceInCents !== 0) {
       return res.status(400).json({ error: 'Invalid price. Price must be at least $0.50.' });
     }
     
