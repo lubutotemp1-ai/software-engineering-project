@@ -13,7 +13,8 @@ import {
   Menu,
   ChevronLeft,
   Lock,
-  X
+  X,
+  Crown
 } from 'lucide-react';
 import hospitalSvg from '../images/hospital-svgrepo-com (1).svg';
 
@@ -56,6 +57,7 @@ export default function Sidebar({ activePage, setActivePage }) {
     { id: 'chat', label: 'Messages', icon: MessagesSquare, badge: unreadCount },
     { id: 'education', label: 'Health Education', icon: BookOpen },
     { id: 'records', label: 'Records', icon: FileText },
+    { id: 'subscription', label: 'Subscription', icon: Crown },
     { id: 'change-password', label: 'Change Password', icon: Lock },
   ];
 

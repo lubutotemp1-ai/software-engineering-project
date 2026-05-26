@@ -16,6 +16,7 @@ import ChatPage from './pages/ChatPage';
 import DiagnosisPage from './pages/DiagnosisPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import SubscriptionPage from './pages/SubscriptionPage';
 
 function AppContent() {
   const { user, loading, logout } = useAuth();
@@ -82,6 +83,7 @@ function AppContent() {
       case 'chat':             return <ChatPage />;
       case 'education':        return <EducationPage />;
       case 'records':          return <RecordsPage />;
+      case 'subscription':     return <SubscriptionPage />;
       case 'change-password':  return <ChangePasswordPage />;
       default:                 return <Dashboard setActivePage={setActivePage} />;
     }
