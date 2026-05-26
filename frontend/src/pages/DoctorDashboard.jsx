@@ -293,7 +293,7 @@ export default function DoctorDashboard({ onLogout, user }) {
     { id: 'overview',     label: 'Overview',      icon: '⬛' },
     { id: 'appointments', label: 'Appointments',   icon: '📅' },
     { id: 'schedule',     label: 'My Schedule',    icon: '🗓️' },
-    { id: 'chat',         label: 'Messages',       icon: '💬', badge: unreadCount },
+    { id: 'messages',     label: 'Messages',       icon: '💬', badge: unreadCount },
     { id: 'diagnoses',    label: 'AI Diagnoses',   icon: '🤖' },
   ];
 
@@ -450,7 +450,7 @@ export default function DoctorDashboard({ onLogout, user }) {
         )}
 
         {/* ── CHAT (full parity with patient chat) ── */}
-        {activePage === 'chat' && (
+        {activePage === 'messages' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div className="page-header" style={{ marginBottom: 0 }}><h1>Messages</h1><p>Chat with patients, admins and other doctors</p></div>
@@ -635,7 +635,7 @@ export default function DoctorDashboard({ onLogout, user }) {
                     </div>
                     <div style={{ background: 'var(--grey-50)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, color: '#000000', lineHeight: 1.7, maxHeight: 200, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>{d.diagnosis}</div>
                     <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }}
-                      onClick={() => { startNewChat({ id: d.patient_id, name: d.patient_name, role: 'patient' }); setActivePage('chat'); }}>
+                      onClick={() => { startNewChat({ id: d.patient_id, name: d.patient_name, role: 'patient' }); setActivePage('messages'); }}>
                       💬 Message Patient
                     </button>
                   </div>
