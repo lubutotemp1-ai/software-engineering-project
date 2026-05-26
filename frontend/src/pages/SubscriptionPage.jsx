@@ -99,22 +99,22 @@ export default function SubscriptionPage() {
                 ];
               case 'Pro':
                 return [
-                  '50 AI Diagnosis uses',
-                  '100 Health Education uses',
+                  '15 AI Diagnosis uses',
+                  '15 Health Education uses',
                   'Full health tracking',
                   'Unlimited appointments',
                 ];
               case 'Plus':
                 return [
-                  '150 AI Diagnosis uses',
-                  '300 Health Education uses',
+                  '25 AI Diagnosis uses',
+                  '25 Health Education uses',
                   'Priority support',
                   'Advanced analytics',
                 ];
               case 'Max':
                 return [
-                  '500 AI Diagnosis uses',
-                  '1000 Health Education uses',
+                  '35 AI Diagnosis uses',
+                  '35 Health Education uses',
                   '24/7 Premium support',
                   'Dedicated account manager',
                 ];

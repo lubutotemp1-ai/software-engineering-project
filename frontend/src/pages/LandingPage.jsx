@@ -18,9 +18,9 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
   const [scrollY, setScrollY] = useState(0);
   const [plans, setPlans] = useState([
     { id: 1, name: 'Free', price: 0, diagnosis: 7, education: 10 },
-    { id: 2, name: 'Pro', price: 24.99, diagnosis: 50, education: 100 },
-    { id: 3, name: 'Plus', price: 74.99, diagnosis: 150, education: 300 },
-    { id: 4, name: 'Max', price: 119.99, diagnosis: 500, education: 1000 },
+    { id: 2, name: 'Pro', price: 24.99, diagnosis: 15, education: 15 },
+    { id: 3, name: 'Plus', price: 74.99, diagnosis: 25, education: 25 },
+    { id: 4, name: 'Max', price: 119.99, diagnosis: 35, education: 35 },
   ]);
   const [loadingPlans, setLoadingPlans] = useState(true);
 
@@ -337,8 +337,8 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px', marginTop: '8px' }}>Pro Plan</div>
             <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$24.99<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
             <div style={{ space: '16px', marginBottom: '24px' }}>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 50 AI Diagnosis uses</div>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 100 Health Education uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 15 AI Diagnosis uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 15 Health Education uses</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Full health tracking</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Unlimited appointments</div>
             </div>
@@ -365,8 +365,8 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Plus Plan</div>
             <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$74.99<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
             <div style={{ space: '16px', marginBottom: '24px' }}>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 150 AI Diagnosis uses</div>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 300 Health Education uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 25 AI Diagnosis uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 25 Health Education uses</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Priority support</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Advanced analytics</div>
             </div>
@@ -393,8 +393,8 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Max Plan</div>
             <div style={{ fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '24px' }}>$119.99<span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>/mo</span></div>
             <div style={{ space: '16px', marginBottom: '24px' }}>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 500 AI Diagnosis uses</div>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 1000 Health Education uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 35 AI Diagnosis uses</div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 35 Health Education uses</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ 24/7 Premium support</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>✓ Dedicated account manager</div>
             </div>
