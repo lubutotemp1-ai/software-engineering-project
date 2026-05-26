@@ -597,32 +597,34 @@ const dbModule = {
   query: async (sql, params = []) => {
     if (dbType === 'sqlite') {
       try {
-        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
-        let convertedSql = sql;
-        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
-        const stmt = db.prepare(convertedSql);
+        const stmt = db.prepare(sql);
         return { rows: stmt.all(...params), rowCount: 1 };
       } catch (err) {
         throw err;
       }
     } else {
-      return await db.query(sql, params);
+      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+      let convertedSql = sql;
+      let paramIndex = 1;
+      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      return await db.query(convertedSql, params);
     }
   },
   
   get_: async (sql, params = []) => {
     if (dbType === 'sqlite') {
       try {
-        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
-        let convertedSql = sql;
-        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
-        const stmt = db.prepare(convertedSql);
+        const stmt = db.prepare(sql);
         return stmt.get(...params);
       } catch (err) {
         return null;
       }
     } else {
-      const result = await db.query(sql, params);
+      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+      let convertedSql = sql;
+      let paramIndex = 1;
+      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      const result = await db.query(convertedSql, params);
       return result.rows[0];
     }
   },
@@ -630,10 +632,7 @@ const dbModule = {
   run_: async (sql, params = []) => {
     if (dbType === 'sqlite') {
       try {
-        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
-        let convertedSql = sql;
-        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
-        const stmt = db.prepare(convertedSql);
+        const stmt = db.prepare(sql);
         const result = stmt.run(...params);
         return {
           lastInsertRowid: result.lastInsertRowid || null,
@@ -643,7 +642,11 @@ const dbModule = {
         return { lastInsertRowid: null, changes: 0 };
       }
     } else {
-      const result = await db.query(sql, params);
+      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+      let convertedSql = sql;
+      let paramIndex = 1;
+      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      const result = await db.query(convertedSql, params);
       return {
         lastInsertRowid: result.rows[0]?.id || null,
         changes: result.rowCount
@@ -654,16 +657,17 @@ const dbModule = {
   all_: async (sql, params = []) => {
     if (dbType === 'sqlite') {
       try {
-        // Convert PostgreSQL $1, $2... syntax to SQLite ? syntax
-        let convertedSql = sql;
-        convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
-        const stmt = db.prepare(convertedSql);
+        const stmt = db.prepare(sql);
         return stmt.all(...params);
       } catch (err) {
         return [];
       }
     } else {
-      const result = await db.query(sql, params);
+      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+      let convertedSql = sql;
+      let paramIndex = 1;
+      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      const result = await db.query(convertedSql, params);
       return result.rows;
     }
   }
