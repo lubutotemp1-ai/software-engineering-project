@@ -607,10 +607,13 @@ const dbModule = {
       let convertedSql = sql;
       let paramIndex = 1;
       convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
       return await db.query(convertedSql, params);
     }
   },
-  
+
   get_: async (sql, params = []) => {
     if (dbType === 'sqlite') {
       try {
@@ -624,6 +627,9 @@ const dbModule = {
       let convertedSql = sql;
       let paramIndex = 1;
       convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
       const result = await db.query(convertedSql, params);
       return result.rows[0];
     }
@@ -646,6 +652,9 @@ const dbModule = {
       let convertedSql = sql;
       let paramIndex = 1;
       convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
       const result = await db.query(convertedSql, params);
       return {
         lastInsertRowid: result.rows[0]?.id || null,
@@ -667,6 +676,9 @@ const dbModule = {
       let convertedSql = sql;
       let paramIndex = 1;
       convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
       const result = await db.query(convertedSql, params);
       return result.rows;
     }
