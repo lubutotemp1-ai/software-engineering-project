@@ -17,13 +17,12 @@ router.post('/register', async (req, res) => {
   if (!name || !email || !password)
     return res.status(400).json({ error: 'Name, email, and password are required.' });
   try {
-    const existing = await db.get_('SELECT id FROM users WHERE email = $1', [email]);
+    const existing = await db.get_('SELECT id FROM users WHERE email = ?', [email]);
     if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
     const hashed = bcrypt.hashSync(password, 10);
     const result = await db.run_(
       `INSERT INTO users (name, email, password, role, phone, date_of_birth, blood_type, subscription_plan) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-       RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [name, email, hashed, 'patient', phone || null, date_of_birth || null, blood_type || null, 'free']
     );
     const userId = result.lastInsertRowid;
@@ -40,7 +39,7 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
   try {
-    const user = await db.get_('SELECT * FROM users WHERE email = $1', [email]);
+    const user = await db.get_('SELECT * FROM users WHERE email = ?', [email]);
     if (!user || !bcrypt.compareSync(password, user.password))
       return res.status(401).json({ error: 'Invalid email or password.' });
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -55,7 +54,7 @@ router.post('/doctor-login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
   try {
-    const doctor = await db.get_('SELECT * FROM doctors WHERE email = $1', [email]);
+    const doctor = await db.get_('SELECT * FROM doctors WHERE email = ?', [email]);
     if (!doctor || !bcrypt.compareSync(password, doctor.password))
       return res.status(401).json({ error: 'Invalid email or password.' });
     const token = jwt.sign({ id: doctor.id, email: doctor.email, name: doctor.name, role: 'doctor', department: doctor.department }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -72,10 +71,10 @@ router.post('/doctor-login', async (req, res) => {
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     if (req.user.role === 'doctor') {
-      const doc = await db.get_('SELECT id, name, email, phone, department, specialization, created_at FROM doctors WHERE id = $1', [req.user.id]);
+      const doc = await db.get_('SELECT id, name, email, phone, department, specialization, created_at FROM doctors WHERE id = ?', [req.user.id]);
       return res.json({ ...doc, role: 'doctor' });
     }
-    const user = await db.get_('SELECT id, name, email, role, phone, date_of_birth, blood_type, created_at FROM users WHERE id = $1', [req.user.id]);
+    const user = await db.get_('SELECT id, name, email, role, phone, date_of_birth, blood_type, created_at FROM users WHERE id = ?', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found.' });
     res.json(user);
   } catch (err) {
@@ -92,9 +91,9 @@ router.post('/change-password', authMiddleware, async (req, res) => {
   try {
     let user;
     if (req.user.role === 'doctor') {
-      user = await db.get_('SELECT * FROM doctors WHERE id = $1', [req.user.id]);
+      user = await db.get_('SELECT * FROM doctors WHERE id = ?', [req.user.id]);
     } else {
-      user = await db.get_('SELECT * FROM users WHERE id = $1', [req.user.id]);
+      user = await db.get_('SELECT * FROM users WHERE id = ?', [req.user.id]);
     }
 
     if (!user) return res.status(404).json({ error: 'User not found.' });
@@ -103,8 +102,9 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 
     const newHash = bcrypt.hashSync(newPassword, 10);
     const table = req.user.role === 'doctor' ? 'doctors' : 'users';
+    const now = new Date().toISOString();
     
-    await db.query(`UPDATE ${table} SET password = $1, updated_at = NOW() WHERE id = $2`, [newHash, req.user.id]);
+    await db.run_(`UPDATE ${table} SET password = ?, updated_at = ? WHERE id = ?`, [newHash, now, req.user.id]);
     res.json({ message: 'Password changed successfully!' });
   } catch (err) {
     console.error(err);
@@ -118,7 +118,7 @@ router.post('/request-password-reset', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email is required.' });
 
   try {
-    const user = await db.get_('SELECT id FROM users WHERE email = $1', [email]);
+    const user = await db.get_('SELECT id FROM users WHERE email = ?', [email]);
     if (!user) return res.status(404).json({ error: 'User not found.' });
 
     const token = generateResetToken();
@@ -126,7 +126,7 @@ router.post('/request-password-reset', async (req, res) => {
 
     await db.run_(
       `INSERT INTO password_reset_tokens (user_id, email, token, expires_at) 
-       VALUES ($1, $2, $3, $4)`,
+       VALUES (?, ?, ?, ?)`,
       [user.id, email, token, expiresAt.toISOString()]
     );
 
@@ -147,23 +147,25 @@ router.post('/reset-password', async (req, res) => {
     return res.status(400).json({ error: 'Email, code, and new password are required.' });
 
   try {
+    const now = new Date().toISOString();
     const resetToken = await db.get_(
       `SELECT * FROM password_reset_tokens 
-       WHERE email = $1 AND token = $2 AND expires_at > NOW()`,
-      [email, code]
+       WHERE email = ? AND token = ? AND expires_at > ?`,
+      [email, code, now]
     );
 
     if (!resetToken) 
       return res.status(401).json({ error: 'Invalid or expired reset code.' });
 
     const newHash = bcrypt.hashSync(newPassword, 10);
+    const now = new Date().toISOString();
     
     // Update user password
-    await db.query(`UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2`, 
-      [newHash, resetToken.user_id]);
+    await db.run_(`UPDATE users SET password = ?, updated_at = ? WHERE id = ?`, 
+      [newHash, now, resetToken.user_id]);
     
     // Delete used token
-    await db.query(`DELETE FROM password_reset_tokens WHERE id = $1`, [resetToken.id]);
+    await db.run_(`DELETE FROM password_reset_tokens WHERE id = ?`, [resetToken.id]);
 
     res.json({ message: 'Password reset successfully! You can now login.' });
   } catch (err) {

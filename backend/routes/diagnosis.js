@@ -49,14 +49,14 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
     // Save to database
     const result = await db.run_(
       `INSERT INTO ai_diagnoses (patient_id, patient_name, symptoms, duration, severity, diagnosis)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [req.user.id, req.user.name, symptoms, duration || null, severity || null, diagnosisText]
     );
 
     // Record AI usage
     await recordAIUsage(req.user.id, 'diagnosis');
 
-    const savedDiagnosis = await db.get_('SELECT * FROM ai_diagnoses WHERE id = $1', [result.lastInsertRowid]);
+    const savedDiagnosis = await db.get_('SELECT * FROM ai_diagnoses WHERE id = ?', [result.lastInsertRowid]);
 
     res.json({
       diagnosis: savedDiagnosis,
@@ -75,7 +75,7 @@ Disclaimer: Remind the patient that this is NOT a substitute for professional me
 router.get('/history', async (req, res) => {
   try {
     const diagnoses = await db.all_(
-      `SELECT * FROM ai_diagnoses WHERE patient_id = $1 ORDER BY created_at DESC`,
+      `SELECT * FROM ai_diagnoses WHERE patient_id = ? ORDER BY created_at DESC`,
       [req.user.id]
     );
     res.json(diagnoses);
@@ -90,7 +90,7 @@ router.get('/received', async (req, res) => {
   if (req.user.role !== 'doctor') return res.status(403).json({ error: 'Doctor access required.' });
   try {
     const diagnoses = await db.all_(
-      `SELECT * FROM ai_diagnoses WHERE doctor_id = $1 AND sent_to_doctor = 1 ORDER BY created_at DESC`,
+      `SELECT * FROM ai_diagnoses WHERE doctor_id = ? AND sent_to_doctor = 1 ORDER BY created_at DESC`,
       [req.user.id]
     );
     res.json(diagnoses);
@@ -103,7 +103,7 @@ router.get('/received', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const diagnosis = await db.get_(
-      `SELECT * FROM ai_diagnoses WHERE id = $1 AND patient_id = $2`,
+      `SELECT * FROM ai_diagnoses WHERE id = ? AND patient_id = ?`,
       [req.params.id, req.user.id]
     );
     if (!diagnosis) {
@@ -129,7 +129,7 @@ router.post('/:id/send-to-doctor', async (req, res) => {
     }
 
     const diagnosis = await db.get_(
-      `SELECT * FROM ai_diagnoses WHERE id = $1 AND patient_id = $2`,
+      `SELECT * FROM ai_diagnoses WHERE id = ? AND patient_id = ?`,
       [req.params.id, req.user.id]
     );
     if (!diagnosis) {
@@ -142,7 +142,7 @@ router.post('/:id/send-to-doctor', async (req, res) => {
       return res.status(400).json({ error: 'This diagnosis has already been sent to a doctor. Please create a new diagnosis to send to a different doctor.' });
     }
 
-    const doctor = await db.get_('SELECT id, name FROM doctors WHERE id = $1', [doctorId]);
+    const doctor = await db.get_('SELECT id, name FROM doctors WHERE id = ?', [doctorId]);
     if (!doctor) {
       console.error(`Doctor not found - ID: ${doctorId}`);
       return res.status(404).json({ error: `Doctor with ID ${doctorId} not found.` });
@@ -150,13 +150,13 @@ router.post('/:id/send-to-doctor', async (req, res) => {
 
     // Update diagnosis with ONLY this specific doctor
     await db.run_(
-      `UPDATE ai_diagnoses SET sent_to_doctor = 1, doctor_id = $1, sent_to_doctor_name = $2, appointment_id = $3 WHERE id = $4`,
+      `UPDATE ai_diagnoses SET sent_to_doctor = 1, doctor_id = ?, sent_to_doctor_name = ?, appointment_id = ? WHERE id = ?`,
       [doctor.id, doctor.name, appointmentId || null, req.params.id]
     );
 
     // Send a chat message to ONLY this specific doctor
     await db.run_(
-      `INSERT INTO chat_messages (sender_id, sender_role, receiver_id, receiver_role, message) VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO chat_messages (sender_id, sender_role, receiver_id, receiver_role, message) VALUES (?, ?, ?, ?, ?)`,
       [
         req.user.id,
         'patient',
@@ -177,13 +177,13 @@ router.post('/:id/send-to-doctor', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const diagnosis = await db.get_(
-      `SELECT * FROM ai_diagnoses WHERE id = $1 AND patient_id = $2`,
+      `SELECT * FROM ai_diagnoses WHERE id = ? AND patient_id = ?`,
       [req.params.id, req.user.id]
     );
     if (!diagnosis) {
       return res.status(404).json({ error: 'Diagnosis not found.' });
     }
-    await db.run_('DELETE FROM ai_diagnoses WHERE id = $1', [req.params.id]);
+    await db.run_('DELETE FROM ai_diagnoses WHERE id = ?', [req.params.id]);
     res.json({ message: 'Diagnosis deleted.' });
   } catch (err) {
     console.error('Delete diagnosis error:', err.message);

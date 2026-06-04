@@ -63,13 +63,13 @@ router.get('/subscription', authMiddleware, async (req, res) => {
       `SELECT s.*, p.name, p.price, p.ai_diagnosis_limit, p.health_education_limit 
        FROM subscriptions s 
        JOIN plans p ON s.plan_id = p.id 
-       WHERE s.user_id = $1`,
+       WHERE s.user_id = ?`,
       [req.user.id]
     );
     
     if (!subscription) {
       // User on free plan
-      const freePlan = await db.get_('SELECT * FROM plans WHERE name = $1', ['Free']);
+      const freePlan = await db.get_('SELECT * FROM plans WHERE name = ?', ['Free']);
       return res.json({
         plan_id: freePlan.id,
         name: freePlan.name,
@@ -98,7 +98,7 @@ router.get('/ai-usage', authMiddleware, async (req, res) => {
       `SELECT p.ai_diagnosis_limit, p.health_education_limit, p.name as plan_name
        FROM subscriptions s
        JOIN plans p ON s.plan_id = p.id
-       WHERE s.user_id = $1`,
+       WHERE s.user_id = ?`,
       [req.user.id]
     );
 
@@ -108,13 +108,13 @@ router.get('/ai-usage', authMiddleware, async (req, res) => {
     // Get current usage
     const diagnosisUsage = await db.get_(
       `SELECT COALESCE(SUM(usage_count), 0) as total FROM ai_usage 
-       WHERE user_id = $1 AND service_type = 'diagnosis' AND period_start >= $2`,
+       WHERE user_id = ? AND service_type = 'diagnosis' AND period_start >= ?`,
       [req.user.id, monthStart.toISOString()]
     );
 
     const educationUsage = await db.get_(
       `SELECT COALESCE(SUM(usage_count), 0) as total FROM ai_usage 
-       WHERE user_id = $1 AND service_type = 'education' AND period_start >= $2`,
+       WHERE user_id = ? AND service_type = 'education' AND period_start >= ?`,
       [req.user.id, monthStart.toISOString()]
     );
 
@@ -143,10 +143,10 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
   const { plan_id } = req.body;
   
   try {
-    const user = await db.get_('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = await db.get_('SELECT * FROM users WHERE id = ?', [req.user.id]);
     
     // Get plan details from database
-    const plan = await db.get_('SELECT * FROM plans WHERE id = $1', [plan_id]);
+    const plan = await db.get_('SELECT * FROM plans WHERE id = ?', [plan_id]);
     if (!plan) {
       return res.status(400).json({ error: 'Invalid plan ID.' });
     }
