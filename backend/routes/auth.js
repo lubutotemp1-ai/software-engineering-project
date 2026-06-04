@@ -30,6 +30,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ id: userId, email, name, role: 'patient' }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ message: 'Account created!', token, user: { id: userId, name, email, role: 'patient' } });
   } catch (err) {
+    console.error('Registration error:', err);
     res.status(500).json({ error: 'Server error during registration.' });
   }
 });
