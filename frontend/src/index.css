@@ -382,6 +382,15 @@ img {
   text-align: left;
   position: relative;
   border: 1px solid transparent;
+  overflow: hidden;
+  min-height: 40px;
+}
+
+.nav-item span:not(.nav-icon):not(.nav-badge) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
 }
 
 .nav-item:hover {
@@ -416,6 +425,7 @@ img {
   border-radius: var(--radius-full);
   min-width: 18px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .sidebar-footer {
