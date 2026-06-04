@@ -594,6 +594,20 @@ async function initializePostgreSQL() {
       ON CONFLICT (email) DO NOTHING
     `, [adminPasswordHash]);
 
+    // Add missing columns to existing tables (for migrations)
+    try {
+      // Add subscription_plan column to users table if it doesn't exist
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS subscription_plan TEXT DEFAULT 'free'
+      `);
+    } catch (err) {
+      // Column may already exist, which is fine
+      if (!err.message.includes('already exists')) {
+        console.log('Info: subscription_plan column may already exist:', err.message);
+      }
+    }
+
     client.release();
   } catch (err) {
     client.release();
@@ -615,17 +629,23 @@ const dbModule = {
         const stmt = db.prepare(sql);
         return { rows: stmt.all(...params), rowCount: 1 };
       } catch (err) {
+        console.error('SQLite query error:', err.message, 'SQL:', sql);
         throw err;
       }
     } else {
-      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
-      let convertedSql = sql;
-      let paramIndex = 1;
-      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
-      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
-      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
-      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
-      return await db.query(convertedSql, params);
+      try {
+        // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+        let convertedSql = sql;
+        let paramIndex = 1;
+        convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+        // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+        convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+        convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
+        return await db.query(convertedSql, params);
+      } catch (err) {
+        console.error('PostgreSQL query error:', err.message, 'SQL:', sql, 'Params:', params);
+        throw err;
+      }
     }
   },
 
@@ -635,18 +655,24 @@ const dbModule = {
         const stmt = db.prepare(sql);
         return stmt.get(...params);
       } catch (err) {
+        console.error('SQLite get_ error:', err.message, 'SQL:', sql);
         return null;
       }
     } else {
-      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
-      let convertedSql = sql;
-      let paramIndex = 1;
-      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
-      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
-      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
-      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
-      const result = await db.query(convertedSql, params);
-      return result.rows[0];
+      try {
+        // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+        let convertedSql = sql;
+        let paramIndex = 1;
+        convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+        // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+        convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+        convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
+        const result = await db.query(convertedSql, params);
+        return result.rows[0];
+      } catch (err) {
+        console.error('PostgreSQL get_ error:', err.message, 'SQL:', sql, 'Params:', params);
+        return null;
+      }
     }
   },
 
@@ -660,27 +686,33 @@ const dbModule = {
           changes: result.changes
         };
       } catch (err) {
+        console.error('SQLite run_ error:', err.message, 'SQL:', sql);
         return { lastInsertRowid: null, changes: 0 };
       }
     } else {
-      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
-      let convertedSql = sql;
-      let paramIndex = 1;
-      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
-      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
-      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
-      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
-      
-      // For PostgreSQL INSERT statements, add RETURNING id if not present
-      if (convertedSql.trim().toUpperCase().startsWith('INSERT') && !convertedSql.toUpperCase().includes('RETURNING')) {
-        convertedSql = convertedSql.trimRight().replace(/;?\s*$/, ' RETURNING id');
+      try {
+        // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+        let convertedSql = sql;
+        let paramIndex = 1;
+        convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+        // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+        convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+        convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
+        
+        // For PostgreSQL INSERT statements, add RETURNING id if not present
+        if (convertedSql.trim().toUpperCase().startsWith('INSERT') && !convertedSql.toUpperCase().includes('RETURNING')) {
+          convertedSql = convertedSql.trimRight().replace(/;?\s*$/, ' RETURNING id');
+        }
+        
+        const result = await db.query(convertedSql, params);
+        return {
+          lastInsertRowid: result.rows[0]?.id || null,
+          changes: result.rowCount
+        };
+      } catch (err) {
+        console.error('PostgreSQL run_ error:', err.message, 'SQL:', sql, 'Params:', params);
+        throw err;
       }
-      
-      const result = await db.query(convertedSql, params);
-      return {
-        lastInsertRowid: result.rows[0]?.id || null,
-        changes: result.rowCount
-      };
     }
   },
 
@@ -690,18 +722,24 @@ const dbModule = {
         const stmt = db.prepare(sql);
         return stmt.all(...params);
       } catch (err) {
+        console.error('SQLite all_ error:', err.message, 'SQL:', sql);
         return [];
       }
     } else {
-      // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
-      let convertedSql = sql;
-      let paramIndex = 1;
-      convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
-      // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
-      convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
-      convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
-      const result = await db.query(convertedSql, params);
-      return result.rows;
+      try {
+        // Convert SQLite ? syntax to PostgreSQL $1, $2... syntax
+        let convertedSql = sql;
+        let paramIndex = 1;
+        convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+        // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
+        convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
+        convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
+        const result = await db.query(convertedSql, params);
+        return result.rows;
+      } catch (err) {
+        console.error('PostgreSQL all_ error:', err.message, 'SQL:', sql, 'Params:', params);
+        return [];
+      }
     }
   }
 };
