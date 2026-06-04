@@ -2,18 +2,33 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 
 let db;
-const dbType = process.env.DATABASE_URL?.startsWith('sqlite:') ? 'sqlite' : 'postgresql';
+
+// Ensure DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.warn('⚠️  DATABASE_URL not set. Using SQLite at ./health_portal.db');
+  process.env.DATABASE_URL = 'sqlite:./health_portal.db';
+}
+
+const dbType = process.env.DATABASE_URL.startsWith('sqlite:') ? 'sqlite' : 'postgresql';
 
 if (dbType === 'sqlite') {
   // Use SQLite for local development
   const Database = require('better-sqlite3');
   const dbPath = process.env.DATABASE_URL.replace('sqlite:', '') || './health_portal.db';
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  console.log('📦 Using SQLite database for development');
+  try {
+    db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    console.log('📦 Using SQLite database:', dbPath);
+  } catch (err) {
+    console.error('❌ Failed to initialize SQLite:', err.message);
+    throw err;
+  }
 } else {
   // Use PostgreSQL for production
   const { Pool } = require('pg');
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is required for PostgreSQL mode');
+  }
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,

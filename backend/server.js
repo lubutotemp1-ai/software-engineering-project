@@ -5,17 +5,25 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Updated CORS for production
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://software-engineering-project-sand.vercel.app',
-  process.env.FRONTEND_URL
-].filter(Boolean);
+// Updated CORS for production - accept localhost, all Vercel deployments, and configured frontend URL
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
 
-app.use(cors({
-  origin: allowedOrigins,
+    // Allow localhost and any Vercel deployment URL
+    if (!origin || origin === 'http://localhost:3000' || origin.includes('vercel.app') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
