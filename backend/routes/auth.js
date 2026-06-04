@@ -158,7 +158,6 @@ router.post('/reset-password', async (req, res) => {
       return res.status(401).json({ error: 'Invalid or expired reset code.' });
 
     const newHash = bcrypt.hashSync(newPassword, 10);
-    const now = new Date().toISOString();
     
     // Update user password
     await db.run_(`UPDATE users SET password = ?, updated_at = ? WHERE id = ?`, 
