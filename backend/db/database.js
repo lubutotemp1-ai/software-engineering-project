@@ -670,6 +670,12 @@ const dbModule = {
       // Convert boolean comparisons: = 0 to = FALSE, = 1 to = TRUE
       convertedSql = convertedSql.replace(/= 0\b/g, '= FALSE');
       convertedSql = convertedSql.replace(/= 1\b/g, '= TRUE');
+      
+      // For PostgreSQL INSERT statements, add RETURNING id if not present
+      if (convertedSql.trim().toUpperCase().startsWith('INSERT') && !convertedSql.toUpperCase().includes('RETURNING')) {
+        convertedSql = convertedSql.trimRight().replace(/;?\s*$/, ' RETURNING id');
+      }
+      
       const result = await db.query(convertedSql, params);
       return {
         lastInsertRowid: result.rows[0]?.id || null,
